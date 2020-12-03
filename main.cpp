@@ -21,7 +21,12 @@ void enableRawMode()
 	// turn off:
 	//   ECHO   -- printing keypresses
 	//   ICANON -- cannonical mode
-	raw.c_lflag &= ~(ECHO | ICANON);
+	//   ISIG   -- SIGINT (Ctrl-C) and SIGTSTP (Ctrl-Z)
+	//   IXON   -- software flow control (Ctrl-S and Ctrl-Q)
+	//   IEXTEN -- literal character sending (Ctrl-V)
+	//   ICRNL  -- automatic \r (13) into \n (10) translation (fix for Ctrl-M)
+	raw.c_iflag &= ~(ICRNL | IXON);
+	raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
