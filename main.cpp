@@ -15,7 +15,11 @@ void enableRawMode()
 	atexit(disableRawMode);
 
 	struct termios raw = orig_termios;
-	raw.c_lflag &= ~(ECHO);
+	
+	// turn off:
+	//   ECHO   -- printing keypresses
+	//   ICANON -- cannonical mode
+	raw.c_lflag &= ~(ECHO | ICANON);
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
 }
