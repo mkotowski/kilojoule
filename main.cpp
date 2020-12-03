@@ -26,8 +26,15 @@ void enableRawMode()
 	//   IEXTEN -- literal character sending (Ctrl-V)
 	//   ICRNL  -- automatic \r (13) into \n (10) translation (fix for Ctrl-M)
 	//   OPOST  -- output processing
-	raw.c_iflag &= ~(ICRNL | IXON);
+	//
+	// Miscellaneous flags, mostly legacy or turned off by default
+	//   BRKINT -- a break condition will cause a SIGINT signal
+	//   INPCK  -- parity checking
+	//   ISTRIP -- causes the 8th bit of each input byte to be stripped
+	//   CS8    -- a bit mask setting the character size (CS)
+	raw.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
 	raw.c_oflag &= ~(OPOST);
+	raw.c_cflag |= (CS8);
 	raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
