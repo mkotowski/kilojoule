@@ -79,6 +79,12 @@ char editorReadKey()
 	return c;
 }
 
+void editorRefreshScreen()
+{
+	write(STDOUT_FILENO, "\x1b[2J", 4);
+	write(STDOUT_FILENO, "\x1b[H", 3);
+}
+
 void editorProcessKeypress()
 {
 	char c = editorReadKey();
@@ -86,6 +92,7 @@ void editorProcessKeypress()
 	switch (c)
 	{
 		case CTRL_KEY('q'):
+			editorRefreshScreen();
 			exit(0);
 			break;
 	}
@@ -97,6 +104,7 @@ int main()
 
 	while (1)
 	{
+		editorRefreshScreen();
 		editorProcessKeypress();
 	}
 	return 0;
