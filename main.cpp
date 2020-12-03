@@ -63,28 +63,41 @@ void enableRawMode()
 	}
 }
 
+char editorReadKey()
+{
+	int nread;
+	char c;
+	while ((nread = read(STDIN_FILENO, &c, 1)) != 1)
+	{
+		// in Cygwin, when read() times out it returns -1 with an errno
+		// of EAGAIN, instead of just returning 0
+		if (nread == -1 && errno != EAGAIN)
+		{
+			die("read");
+		}
+	}
+	return c;
+}
+
+void editorProcessKeypress()
+{
+	char c = editorReadKey();
+
+	switch (c)
+	{
+		case CTRL_KEY('q'):
+			exit(0);
+			break;
+	}
+}
+
 int main()
 {
 	enableRawMode();
 
 	while (1)
 	{
-		char c = '\0';
-		// in Cygwin, when read() times out it returns -1 with an errno
-		// of EAGAIN, instead of just returning 0
-		if (read(STDIN_FILENO, &c, 1) == -1 && errno != EAGAIN)
-		{
-			die("read");
-		}
-		if (iscntrl(c))
-		{
-			printf("%d\r\n", c);
-		}
-		else
-		{
-			printf("%d ('%c')\r\n", c, c);
-		}
-		if (c == CTRL_KEY('q')) break;
+		editorProcessKeypress();
 	}
 	return 0;
 }
