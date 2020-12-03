@@ -36,7 +36,10 @@ void enableRawMode()
 	raw.c_oflag &= ~(OPOST);
 	raw.c_cflag |= (CS8);
 	raw.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+	// set the minimum number of bytes of input needed before read() can return
+	// setting to 0 means, that read() returns as soon as there is any input
 	raw.c_cc[VMIN] = 0;
+	// set the maximum amount of time to wait before read() return to 100 ms
 	raw.c_cc[VTIME] = 1;
 
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw);
