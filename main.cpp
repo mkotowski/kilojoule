@@ -423,8 +423,15 @@ void editorMoveCursor(int key)
 			{
 				E.cx--;
 			}
+			// Move up when moving left at the start of a line
+			else if (E.cy > 0)
+			{
+				E.cy--;
+				E.cx = E.row[E.cy].size;
+			}
 			break;
 		case ARROW_RIGHT:
+			// Limit scrolling to the right
 			if (row && E.cx < row->size)
 			{
 				E.cx++;
