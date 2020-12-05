@@ -1,5 +1,6 @@
 #include <ctype.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -348,6 +349,29 @@ void editorInsertChar(int c)
 	E.cx++;
 }
 
+char* editorRowsToString(int* buflen)
+{
+	int totlen = 0;
+
+	for (int j = 0; j < E.numrows; j++)
+	{
+		totlen += E.row[j].size + 1;
+	}
+	*buflen = totlen;
+
+	char* buf = (char*)malloc(totlen);
+	char* p = buf;
+	for (int j = 0; j < E.numrows; j++)
+	{
+		memcpy(p, E.row[j].chars, E.row[j].size);
+		p += E.row[j].size;
+		*p = '\n';
+		p++;
+	}
+
+	return buf;
+}
+
 void editorOpen(const char* filename)
 {
 	//free(E.filename);
@@ -376,6 +400,20 @@ void editorOpen(const char* filename)
 
 	free(line);
 	fclose(fp);
+}
+
+void editorSave()
+{
+	if (E.filename == NULL) return;
+
+	int len;
+	char* buf = editorRowsToString(&len);
+
+	int fd = open(E.filename, O_RDWR | O_CREAT, 0644);
+	ftruncate(fd, len);
+	write(fd, buf, len);
+	close(fd);
+	free(buf);
 }
 
 // append buffer
@@ -634,6 +672,9 @@ void editorProcessKeypress()
 			write(STDOUT_FILENO, "\x1b[H", 3);
 			exit(0);
 			break;
+		case CTRL_KEY('s'):
+			editorSave();
+			break;
 		case HOME_KEY:
 			E.cx = 0;
 			break;
@@ -674,7 +715,7 @@ void editorProcessKeypress()
 		case ARROW_RIGHT:
 			editorMoveCursor(c);
 			break;
-		case CTRL_KEY('l');
+		case CTRL_KEY('l'):
 		case '\x1b':
 			break;
 		default:
