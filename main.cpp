@@ -16,6 +16,7 @@
 
 enum editorKey
 {
+	BACKSPACE = 127,
 	ARROW_LEFT = 1000,
 	ARROW_RIGHT,
 	ARROW_UP,
@@ -306,7 +307,7 @@ void editorUpdateRow(erow* row)
 	row->rsize = idx;
 }
 
-void editorAppendRow(char* s, size_t len)
+void editorAppendRow(const char* s, size_t len)
 {
 	E.row = (erow*)realloc(E.row, sizeof(erow) * (E.numrows+1));
 
@@ -321,6 +322,30 @@ void editorAppendRow(char* s, size_t len)
 	editorUpdateRow(&E.row[at]);
 
 	E.numrows++;
+}
+
+void editorRowInsertChar(erow* row, int at, int c)
+{
+	if (at < 0 || at > row->size)
+	{
+		at = row->size;
+	}
+
+	row->chars = (char*)realloc(row->chars, row->size + 2);
+	memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+	row->size++;
+	row->chars[at] = c;
+	editorUpdateRow(row);
+}
+
+void editorInsertChar(int c)
+{
+	if (E.cy == E.numrows)
+	{
+		editorAppendRow("\0", 0);
+	}
+	editorRowInsertChar(&E.row[E.cy], E.cx, c);
+	E.cx++;
 }
 
 void editorOpen(const char* filename)
@@ -601,6 +626,9 @@ void editorProcessKeypress()
 
 	switch (c)
 	{
+		case '\r':
+			// TODO
+			break;
 		case CTRL_KEY('q'):
 			write(STDOUT_FILENO, "\x1b[2J", 4);
 			write(STDOUT_FILENO, "\x1b[H", 3);
@@ -614,6 +642,11 @@ void editorProcessKeypress()
 			{
 				E.cx = E.row[E.cy].size;
 			}
+			break;
+		case BACKSPACE:
+		case CTRL_KEY('h'):
+		case DEL_KEY:
+			// TODO
 			break;
 		case PAGE_UP:
 		case PAGE_DOWN:
@@ -640,6 +673,12 @@ void editorProcessKeypress()
 		case ARROW_LEFT:
 		case ARROW_RIGHT:
 			editorMoveCursor(c);
+			break;
+		case CTRL_KEY('l');
+		case '\x1b':
+			break;
+		default:
+			editorInsertChar(c);
 			break;
 	}
 }
