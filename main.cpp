@@ -59,7 +59,7 @@ struct editorConfig E;
 
 void editorSetStatusMessage(const char *fmt, ...);
 void editorRefreshScreen();
-const char *editorPrompt(const char *prompt);
+const char *editorPrompt(const char *prompt, void (*callback)(char *, int));
 
 void die(const char *s)
 {
@@ -511,7 +511,7 @@ void editorSave()
 {
 	if (E.filename == NULL)
 	{
-		E.filename = editorPrompt("Save as: %s (ESC to cancel)");
+		E.filename = editorPrompt("Save as: %s (ESC to cancel)", NULL);
 		if (E.filename == NULL)
 		{
 			editorSetStatusMessage("Save aborted");
@@ -542,15 +542,17 @@ void editorSave()
 	editorSetStatusMessage("Can't save! I/O error: %s", strerror(errno));
 }
 
-void editorFind()
+void editorFindCallback(char *query, int key)
 {
-	const char* query = editorPrompt("Search: %s (ESC to cancel)");
-	if (query == NULL) return;
+	if (key == '\r' || key == '\x1b')
+	{
+		return;
+	}
 
 	for (int i = 0; i < E.numrows; i++)
 	{
 		erow *row = &E.row[i];
-		const char *match = strstr(row->render, query);
+		char *match = strstr(row->render, query);
 		if (match)
 		{
 			E.cy = i;
@@ -559,7 +561,28 @@ void editorFind()
 			break;
 		}
 	}
-	free((char*)query);
+}
+
+void editorFind()
+{
+	int saved_cx = E.cx;
+	int saved_cy = E.cy;
+	int saved_coloff = E.coloff;
+	int saved_rowoff = E.rowoff;
+
+	const char* query = editorPrompt("Search: %s (ESC to cancel)", editorFindCallback);
+
+	if (query)
+	{
+		free((char*)query);
+	}
+	else
+	{
+		E.cx = saved_cx;
+		E.cy = saved_cy;
+		E.coloff = saved_coloff;
+		E.rowoff = saved_rowoff;
+	}
 }
 
 // append buffer
@@ -751,7 +774,7 @@ void editorSetStatusMessage(const char *fmt, ...)
 	E.statusmsg_time = time(NULL);
 }
 
-const char* editorPrompt(const char* prompt)
+const char* editorPrompt(const char* prompt, void (*callback)(char *, int))
 {
 	size_t bufsize = 128;
 	char* buf = (char*)malloc(bufsize);
@@ -772,6 +795,7 @@ const char* editorPrompt(const char* prompt)
 		else if (c == '\x1b')
 		{
 			editorSetStatusMessage("");
+			if (callback) callback(buf, c);
 			free(buf);
 			return NULL;
 		}		
@@ -780,6 +804,7 @@ const char* editorPrompt(const char* prompt)
 			if (buflen != 0)
 			{
 				editorSetStatusMessage("");
+				if (callback) callback(buf, c);
 				return buf;
 			}
 		}
@@ -793,6 +818,7 @@ const char* editorPrompt(const char* prompt)
 			buf[buflen++] = c;
 			buf[buflen] = '\0';
 		}
+		if (callback) callback(buf, c);
 	}
 }
 
