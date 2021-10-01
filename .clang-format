@@ -1,0 +1,11 @@
+---
+BasedOnStyle: Mozilla
+AlignAfterOpenBracket: Align
+AlignConsecutiveMacros: 'true'
+AlignConsecutiveDeclarations: 'true'
+AlignTrailingComments: 'true'
+ColumnLimit: '80'
+TabWidth: '2'
+UseTab: ForIndentation
+SortIncludes: false
+...
