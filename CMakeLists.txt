@@ -9,6 +9,7 @@ set(VERSION_PATCH 0)
 set(VERSION_TWEAK 0)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES OFF)
 
 find_program(CMAKE_CXX_CLANG_TIDY clang-tidy 
     NAMES clang-tidy HINTS $ENV{PROGRAMFILES}/clang-tidy
@@ -52,8 +53,21 @@ endif()
 
 set(CMAKE_LINK_WHAT_YOU_USE TRUE)
 
+file(GLOB executable_source_files CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/*.cpp"
+)
+
+file(GLOB executable_header_files CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/include/*.hpp"
+)
+
 set(TARGET_NAME kj)
-add_executable(${TARGET_NAME} "src/main.cpp")
+
+add_executable(${TARGET_NAME}
+    ${executable_header_files} ${executable_source_files}
+)
+
+target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/include")
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 set_property(TARGET ${TARGET_NAME} 
