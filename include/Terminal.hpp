@@ -1,6 +1,8 @@
 #pragma once
 
+#if defined(__linux__)
 #include <termios.h>
+#endif
 
 enum class TerminalMode
 {
@@ -23,11 +25,13 @@ private:
 	TerminalMode currentMode = TerminalMode::Cooked;
 
 public:
-	Terminal(/* args */);
+	Terminal();
 	~Terminal() = default;
 
 	TerminalMode SetMode(TerminalMode newMode);
-	void         ResetMode();
+
+	static bool isCookedModeRestoredProperly;
+	static void ForceCookedMode();
 
 	int GetWindowSize();
 	int GetCursorPosition();
