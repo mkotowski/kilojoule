@@ -8,6 +8,7 @@
 
 #include "constants.hpp"
 #include "Editor.hpp"
+#include "Terminal.hpp"
 
 #define CTRL_KEY(k) ((k)&0x1f)
 
@@ -95,8 +96,10 @@ Editor::SelectSyntaxHighlight()
 }
 
 int
-Editor::Init(int screenRows, int screenColumns)
+Editor::Init(std::shared_ptr<Terminal> term)
 {
+	terminal = term;
+
 	config.cx = 0;
 	config.cy = 0;
 	config.rx = 0;
@@ -110,13 +113,14 @@ Editor::Init(int screenRows, int screenColumns)
 	config.statusmsg_time = 0;
 	config.syntax = nullptr;
 
-	config.screenrows = screenRows;
-	config.screencols = screenColumns;
+	config.screenrows = terminal->GetRows();
+	config.screencols = terminal->GetColumns();
 
 	// if (getWindowSize(&config.screenrows, &config.screencols) ==
 	// -1) { 	die("getWindowSize");
 	// }
 
+	// Adjust for the status prompt
 	config.screenrows -= 2;
 
 	return 0;
@@ -551,7 +555,7 @@ Editor::ProcessKeypress()
 
 	switch (c) {
 		case CTRL_KEY('q'):
-			if (config.dirty && quit_times > 0) {
+			if (static_cast<bool>(config.dirty) && quit_times > 0) {
 				SetStatusMessage("WARNING!!! File has unsaved changes. "
 				                 "Press Ctrl-Q %d more times to quit.",
 				                 quit_times);
@@ -567,7 +571,7 @@ Editor::ProcessKeypress()
 			break;
 
 		case CTRL_KEY('s'):
-			// editorSave();
+			Save();
 			break;
 		case HOME_KEY:
 			config.cx = 0;
@@ -578,7 +582,7 @@ Editor::ProcessKeypress()
 			}
 			break;
 		case CTRL_KEY('f'):
-			// editorFind();
+			Find();
 			break;
 		case BACKSPACE:
 		case CTRL_KEY('h'):
@@ -599,7 +603,7 @@ Editor::ProcessKeypress()
 			}
 
 			int times = config.screenrows;
-			while (times--) {
+			while (static_cast<bool>(times--)) {
 				MoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
 			}
 		} break;
@@ -869,9 +873,9 @@ Editor::RefreshScreen()
 void
 Editor::Save()
 {
-	if (config.filename == NULL) {
-		config.filename = Prompt("Save as: %s (ESC to cancel)", NULL);
-		if (config.filename == NULL) {
+	if (config.filename == nullptr) {
+		config.filename = Prompt("Save as: %s (ESC to cancel)", nullptr);
+		if (config.filename == nullptr) {
 			SetStatusMessage("Save aborted");
 			return;
 		}
@@ -1011,7 +1015,12 @@ Editor::Prompt(const char* prompt, void (*callback)(char*, int))
 		} else if (!iscntrl(c) && c < 128) {
 			if (buflen == bufsize - 1) {
 				bufsize *= 2;
+
 				buf = (char*)realloc(buf, bufsize);
+
+				if (buf == nullptr) {
+					free(buf);
+				}
 			}
 			buf[buflen++] = c;
 			buf[buflen] = '\0';

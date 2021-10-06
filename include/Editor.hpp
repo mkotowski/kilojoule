@@ -1,6 +1,9 @@
 #pragma once
 
 #include <ctime> // time_t
+#include <memory>
+
+class Terminal;
 
 typedef struct erow
 {
@@ -53,9 +56,11 @@ public:
 	Editor(/* args */) = default;
 	~Editor() = default;
 
+	std::shared_ptr<Terminal> terminal = nullptr;
+
 	bool shouldClose = false;
 
-	int Init(int screenRows, int screenColumns);
+	int Init(std::shared_ptr<Terminal> term);
 
 	void        SetStatusMessage(const char* fmt, ...);
 	void        RefreshScreen();

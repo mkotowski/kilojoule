@@ -1,4 +1,5 @@
 #include <iostream>
+#include <memory>
 
 #include "constants.hpp"
 
@@ -8,8 +9,6 @@
 int
 main(int argc, char* argv[])
 {
-	std::cout << argc << " " << *argv << std::endl;
-
 	Terminal terminal{};
 	Editor   editor{};
 
@@ -19,7 +18,7 @@ main(int argc, char* argv[])
 		throw("GetWindowSize");
 	}
 
-	editor.Init(terminal.GetRows(), terminal.GetColumns());
+	editor.Init(std::make_shared<Terminal>(terminal));
 
 	if (argc >= 2) {
 		editor.Open(argv[1]);
@@ -34,7 +33,5 @@ main(int argc, char* argv[])
 	}
 
 	terminal.SetMode(TerminalMode::Cooked);
-	// terminal.ResetMode();
-
 	return 0;
 }
