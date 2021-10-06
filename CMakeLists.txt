@@ -39,17 +39,11 @@ if(CMAKE_CXX_CPPCHECK)
     )
 endif()
 
-find_program(CMAKE_CXX_INCLUDE_WHAT_YOU_USE iwyu 
+find_program(PATH_INCLUDE_WHAT_YOU_USE iwyu 
     NAMES iwyu HINTS
         $ENV{PROGRAMFILES}/iwyu
         /usr/bin/iwyu
 )
-
-if(CMAKE_CXX_INCLUDE_WHAT_YOU_USE)
-    list(APPEND CMAKE_CXX_INCLUDE_WHAT_YOU_USE
-        "--transitive_includes_only"
-    )
-endif()
 
 set(CMAKE_LINK_WHAT_YOU_USE TRUE)
 
@@ -66,6 +60,19 @@ set(TARGET_NAME kj)
 add_executable(${TARGET_NAME}
     ${executable_header_files} ${executable_source_files}
 )
+
+
+
+if(PATH_INCLUDE_WHAT_YOU_USE)	
+    list(APPEND PATH_INCLUDE_WHAT_YOU_USE
+        "--transitive_includes_only"
+    )
+
+	set_property(TARGET ${TARGET_NAME} 
+    	PROPERTY CXX_INCLUDE_WHAT_YOU_USE
+    		"${PATH_INCLUDE_WHAT_YOU_USE}"
+	)
+endif()
 
 target_include_directories(${TARGET_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/include")
 
