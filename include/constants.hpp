@@ -13,11 +13,14 @@ inline constexpr int quitTimes{ 3 };
 enum class Platform
 {
 	Linux,
-	Windows
+	Windows,
+	Android,
 };
 
-#if defined(__linux__)
+#if defined(__linux__) && not defined(__ANDROID__)
 constexpr Platform BuildPlatform = Platform::Linux;
+#elif defined(__ANDROID__)
+constexpr Platform BuildPlatform = Platform::Android;
 #elif defined(_WIN32) || defined(_WIN64)
 constexpr Platform BuildPlatform = Platform::Windows;
 #endif

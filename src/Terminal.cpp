@@ -1,7 +1,7 @@
 #include <cstdio> // sscanf
 #include <array>
 
-#if defined(__linux__)
+#if defined(__linux__) || defined(__ANDROID__)
 #include <unistd.h>
 #include <sys/ioctl.h>
 #endif
@@ -168,8 +168,10 @@ Terminal::ForceCookedMode()
 		tmp.c_oflag = 5;
 		tmp.c_cflag = 191;
 		tmp.c_lflag = 35387;
+		#if not defined(__ANDROID__)
 		tmp.c_ispeed = 15;
 		tmp.c_ospeed = 15;
+		#endif
 		tmp.c_line = 0;
 
 		tcsetattr(STDIN_FILENO, TCSAFLUSH, &tmp);
