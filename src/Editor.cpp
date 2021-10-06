@@ -4,7 +4,76 @@
 #include <cstdlib> // free
 #include <cstdarg> // va_start va_end
 #include <fcntl.h> // O_RDWR | O_CREAT
+
+#if defined(__linux__)
 #include <unistd.h>
+#endif
+
+#if defined(_WIN32)
+#define close _close
+#define open  _open
+
+/* This code is public domain -- Will Hartung 4/9/09 */
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef long ssize_t;
+
+ssize_t
+getline(char** lineptr, size_t* n, FILE* stream)
+{
+	char*  bufptr = NULL;
+	char*  p = bufptr;
+	size_t size;
+	int    c;
+
+	if (lineptr == NULL) {
+		return -1;
+	}
+	if (stream == NULL) {
+		return -1;
+	}
+	if (n == NULL) {
+		return -1;
+	}
+	bufptr = *lineptr;
+	size = *n;
+
+	c = fgetc(stream);
+	if (c == EOF) {
+		return -1;
+	}
+	if (bufptr == NULL) {
+		bufptr = (char*)malloc(128);
+		if (bufptr == NULL) {
+			return -1;
+		}
+		size = 128;
+	}
+	p = bufptr;
+	while (c != EOF) {
+		if (static_cast<int>(p - bufptr) > static_cast<int>(size - 1)) {
+			size = size + 128;
+			bufptr = (char*)realloc(bufptr, size);
+			if (bufptr == NULL) {
+				return -1;
+			}
+		}
+		*p++ = static_cast<char>(c);
+		if (c == '\n') {
+			break;
+		}
+		c = fgetc(stream);
+	}
+
+	*p++ = '\0';
+	*lineptr = bufptr;
+	*n = size;
+
+	return static_cast<long>(p - bufptr - 1);
+}
+
+#endif
 
 #include "constants.hpp"
 #include "Editor.hpp"
@@ -138,7 +207,7 @@ Editor::UpdateSyntax(erow* row)
 	const char** keywords = config.syntax->keywords;
 
 	const char* scs = config.syntax->singleline_comment_start;
-	int         scs_len = scs ? strlen(scs) : 0;
+	int         scs_len = scs ? static_cast<int>(strlen(scs)) : 0;
 
 	int prev_sep = 1;
 	int in_string = 0;
@@ -192,7 +261,7 @@ Editor::UpdateSyntax(erow* row)
 		if (prev_sep) {
 			int j;
 			for (j = 0; keywords[j]; j++) {
-				int klen = strlen(keywords[j]);
+				int klen = static_cast<int>(strlen(keywords[j]));
 				int kw2 = keywords[j][klen - 1] == '|';
 				if (kw2)
 					klen--;
@@ -238,7 +307,7 @@ Editor::RowInsertChar(erow* row, int at, int c)
 	row->chars = (char*)realloc(row->chars, row->size + 2);
 	memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
 	row->size++;
-	row->chars[at] = c;
+	row->chars[at] = static_cast<char>(c);
 	UpdateRow(row);
 	config.dirty++;
 }
@@ -248,7 +317,7 @@ Editor::RowAppendString(erow* row, char* s, size_t len)
 {
 	row->chars = (char*)realloc(row->chars, row->size + len + 1);
 	memcpy(&row->chars[row->size], s, len);
-	row->size += len;
+	row->size += static_cast<int>(len);
 	row->chars[row->size] = '\0';
 	UpdateRow(row);
 	config.dirty++;
@@ -419,7 +488,13 @@ Editor::Open(const char* filename)
 
 	SelectSyntaxHighlight();
 
+#ifdef _WIN32
+	FILE*  fp;
+	FILE** fpp = &fp;
+	fopen_s(fpp, filename, "r");
+#else
 	FILE* fp = fopen(filename, "r");
+#endif
 
 	if (!fp) {
 		throw("fopen");
@@ -453,7 +528,7 @@ Editor::InsertRow(int at, const char* s, size_t len)
 	memmove(
 	  &config.row[at + 1], &config.row[at], sizeof(erow) * (config.numrows - at));
 
-	config.row[at].size = len;
+	config.row[at].size = static_cast<int>(len);
 	config.row[at].chars = (char*)malloc(len + 1);
 	memcpy(config.row[at].chars, s, len);
 	config.row[at].chars[len] = '\0';
@@ -701,7 +776,7 @@ void
 Editor::DrawMessageBar(struct abuf* ab)
 {
 	abAppend(ab, "\x1b[K", 3);
-	int msglen = strlen(config.statusmsg);
+	int msglen = static_cast<int>(strlen(config.statusmsg));
 	if (msglen > config.screencols) {
 		msglen = config.screencols;
 	}
@@ -862,7 +937,7 @@ Editor::RefreshScreen()
 	         "\x1b[%d;%dH",
 	         (config.cy - config.rowoff) + 1,
 	         (config.rx - config.coloff) + 1);
-	abAppend(&ab, buf, strlen(buf));
+	abAppend(&ab, buf, static_cast<int>(strlen(buf)));
 
 	abAppend(&ab, "\x1b[?25h", 6);
 
@@ -873,33 +948,33 @@ Editor::RefreshScreen()
 void
 Editor::Save()
 {
-	if (config.filename == nullptr) {
-		config.filename = Prompt("Save as: %s (ESC to cancel)", nullptr);
-		if (config.filename == nullptr) {
-			SetStatusMessage("Save aborted");
-			return;
-		}
-		SelectSyntaxHighlight();
-	}
+	// if (config.filename == nullptr) {
+	// 	config.filename = Prompt("Save as: %s (ESC to cancel)", nullptr);
+	// 	if (config.filename == nullptr) {
+	// 		SetStatusMessage("Save aborted");
+	// 		return;
+	// 	}
+	// 	SelectSyntaxHighlight();
+	// }
 
-	int   len;
-	char* buf = RowsToString(&len);
+	// int   len;
+	// char* buf = RowsToString(&len);
 
-	int fd = open(config.filename, O_RDWR | O_CREAT, 0644);
-	if (fd != -1) {
-		if (ftruncate(fd, len) != -1) {
-			if (write(fd, buf, len) == len) {
-				close(fd);
-				free(buf);
-				config.dirty = 0;
-				SetStatusMessage("%d bytes written to disk", len);
-				return;
-			}
-		}
-		close(fd);
-	}
-	free(buf);
-	SetStatusMessage("Can't save! I/O error: %s", strerror(errno));
+	// int fd = open(config.filename, O_RDWR | O_CREAT, 0644);
+	// if (fd != -1) {
+	// 	if (ftruncate(fd, len) != -1) {
+	// 		if (write(fd, buf, len) == len) {
+	// 			close(fd);
+	// 			free(buf);
+	// 			config.dirty = 0;
+	// 			SetStatusMessage("%d bytes written to disk", len);
+	// 			return;
+	// 		}
+	// 	}
+	// 	close(fd);
+	// }
+	// free(buf);
+	// SetStatusMessage("Can't save! I/O error: %s", strerror(errno));
 }
 
 void
@@ -1022,7 +1097,7 @@ Editor::Prompt(const char* prompt, void (*callback)(char*, int))
 					free(buf);
 				}
 			}
-			buf[buflen++] = c;
+			buf[buflen++] = static_cast<char>(c);
 			buf[buflen] = '\0';
 		}
 		if (callback)

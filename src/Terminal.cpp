@@ -1,5 +1,5 @@
-#include <cstdio> // sscanf
 #include <array>
+#include <cstdio> // sscanf
 
 #if defined(__linux__) || defined(__ANDROID__)
 #include <unistd.h>
@@ -10,9 +10,12 @@
 
 Terminal::Terminal()
 {
+#if defined(_WIN32)
+#else
 	if (tcgetattr(STDIN_FILENO, &initFlags) == -1) {
 		throw("tcgetattr: Could not get the current terminal mode.");
 	}
+#endif
 }
 
 bool Terminal::isCookedModeRestoredProperly = true;
@@ -28,8 +31,31 @@ Terminal::SetMode(TerminalMode newMode)
 
 	currentFlags = initFlags;
 
+#if defined(_WIN32)
+	HANDLE G_in_bufhdl;
+	HANDLE G_out_bufhdl;
+	DWORD  newOut;
+#endif
+
 	switch (newMode) {
 		case TerminalMode::Raw:
+#if defined(_WIN32)
+			G_in_bufhdl = GetStdHandle(STD_INPUT_HANDLE);
+			G_out_bufhdl = GetStdHandle(STD_OUTPUT_HANDLE);
+
+			GetConsoleMode(G_in_bufhdl, &initFlags);
+			currentFlags = initFlags;
+			currentFlags &= ~ENABLE_ECHO_INPUT;
+			currentFlags &= ~ENABLE_LINE_INPUT;
+			currentFlags &= ~ENABLE_PROCESSED_INPUT;
+			// currentFlags &= ~ENABLE_INSERT_MODE;
+			SetConsoleMode(G_in_bufhdl, currentFlags);
+
+			GetConsoleMode(G_out_bufhdl, &newOut);
+			newOut &= ~ENABLE_WRAP_AT_EOL_OUTPUT;
+			// newOut &= ~ENABLE_PROCESSED_OUTPUT;
+			SetConsoleMode(G_out_bufhdl, newOut);
+#else
 			// turn off:
 			//   ECHO   -- printing keypresses
 			//   ICANON -- cannonical mode
@@ -58,20 +84,27 @@ Terminal::SetMode(TerminalMode newMode)
 			if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &currentFlags) == -1) {
 				throw("tcsetattr: Could not set the raw terminal mode.");
 			}
+#endif
 			isCookedModeRestoredProperly = false;
 			break;
 		case TerminalMode::Cbreak:
+#if defined(_WIN32)
+#else
 			// TODO
 			if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &initFlags) == -1) {
 				throw("tcsetattr: Could not set the cbreak terminal mode.");
 			}
+#endif
 			isCookedModeRestoredProperly = false;
 			break;
 		case TerminalMode::Cooked:
 			// Return to the original mode
+#if defined(_WIN32)
+#else
 			if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &initFlags) == -1) {
 				throw("tcsetattr: Could not set the cooked terminal mode.");
 			}
+#endif
 			isCookedModeRestoredProperly = true;
 			break;
 		default:
@@ -86,6 +119,17 @@ Terminal::SetMode(TerminalMode newMode)
 int
 Terminal::GetWindowSize()
 {
+#if defined(_WIN32)
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi) == 0) {
+		if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) {
+			return -1;
+		}
+		return GetCursorPosition();
+	}
+	columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+	rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
+#else
 	struct winsize ws;
 
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
@@ -98,7 +142,7 @@ Terminal::GetWindowSize()
 		rows = ws.ws_row;
 		return 0;
 	}
-
+#endif
 	return 0;
 }
 
@@ -141,8 +185,8 @@ Terminal::ForceCookedMode()
 	if (!isCookedModeRestoredProperly) {
 		// TODO: Compare the default values of the most popular emulators.
 
+#if defined(__linux__)
 		TerminalFlags tmp;
-
 		tmp.c_cc[0] = 3;
 		tmp.c_cc[1] = 28;
 		tmp.c_cc[2] = 127;
@@ -168,12 +212,14 @@ Terminal::ForceCookedMode()
 		tmp.c_oflag = 5;
 		tmp.c_cflag = 191;
 		tmp.c_lflag = 35387;
-		#if not defined(__ANDROID__)
+#if not defined(__ANDROID__)
 		tmp.c_ispeed = 15;
 		tmp.c_ospeed = 15;
-		#endif
+#endif
 		tmp.c_line = 0;
 
 		tcsetattr(STDIN_FILENO, TCSAFLUSH, &tmp);
+#elif defined(_WIN32)
+#endif
 	}
 }

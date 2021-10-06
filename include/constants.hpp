@@ -17,7 +17,7 @@ enum class Platform
 	Android,
 };
 
-#if defined(__linux__) && not defined(__ANDROID__)
+#if defined(__linux__) && !defined(__ANDROID__)
 constexpr Platform BuildPlatform = Platform::Linux;
 #elif defined(__ANDROID__)
 constexpr Platform BuildPlatform = Platform::Android;
