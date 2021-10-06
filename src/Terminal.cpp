@@ -5,55 +5,80 @@
 
 #include "Terminal.hpp"
 
-// Terminal::Terminal(/* args */) {}
+Terminal::Terminal()
+{
+	if (tcgetattr(STDIN_FILENO, &initFlags) == -1) {
+		// die("tcgetattr");
+	}
+}
 
 // Terminal::~Terminal() {}
 
-int
-Terminal::ToggleRawMode(bool state = true)
+TerminalMode
+Terminal::SetMode(TerminalMode newMode)
 {
-	if (state) {
-		if (tcgetattr(STDIN_FILENO, &initTermios) == -1) {
-			// die("tcgetattr");
-		}
-		// std::atexit(disableRawMode);
-
-		currentTermios = initTermios;
-
-		// turn off:
-		//   ECHO   -- printing keypresses
-		//   ICANON -- cannonical mode
-		//   ISIG   -- SIGINT (Ctrl-C) and SIGTSTP (Ctrl-Z)
-		//   IXON   -- software flow control (Ctrl-S and Ctrl-Q)
-		//   IEXTEN -- literal character sending (Ctrl-V)
-		//   ICRNL  -- automatic \r (13) into \n (10) translation (fix for Ctrl-M)
-		//   OPOST  -- output processing
-		//
-		// Miscellaneous flags, mostly legacy or turned off by default
-		//   BRKINT -- a break condition will cause a SIGINT signal
-		//   INPCK  -- parity checking
-		//   ISTRIP -- causes the 8th bit of each input byte to be stripped
-		//   CS8    -- a bit mask setting the character size (CS)
-		currentTermios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-		currentTermios.c_oflag &= ~(OPOST);
-		currentTermios.c_cflag |= (CS8);
-		currentTermios.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
-		// set the minimum number of bytes of input needed before read() can return
-		// setting to 0 means, that read() returns as soon as there is any input
-		currentTermios.c_cc[VMIN] = 0;
-		// set the maximum amount of time to wait before read() return to 100 ms
-		currentTermios.c_cc[VTIME] = 1;
-
-		if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &currentTermios) == -1) {
-			// die("tcsetattr");
-		}
-	} else {
-		if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &initTermios) == -1) {
-			// die("tcsetattr");
-		}
+	if (currentMode == newMode) {
+		return currentMode;
 	}
-	return 0;
+
+	currentMode = newMode;
+
+	currentFlags = initFlags;
+
+	switch (newMode) {
+		case TerminalMode::Raw:
+			if (tcgetattr(STDIN_FILENO, &initFlags) == -1) {
+				// die("tcgetattr");
+			}
+			// std::atexit(disableRawMode);
+			currentFlags = initFlags;
+
+			// turn off:
+			//   ECHO   -- printing keypresses
+			//   ICANON -- cannonical mode
+			//   ISIG   -- SIGINT (Ctrl-C) and SIGTSTP (Ctrl-Z)
+			//   IXON   -- software flow control (Ctrl-S and Ctrl-Q)
+			//   IEXTEN -- literal character sending (Ctrl-V)
+			//   ICRNL  -- automatic \r (13) into \n (10) translation (fix for Ctrl-M)
+			//   OPOST  -- output processing
+			//
+			// Miscellaneous flags, mostly legacy or turned off by default
+			//   BRKINT -- a break condition will cause a SIGINT signal
+			//   INPCK  -- parity checking
+			//   ISTRIP -- causes the 8th bit of each input byte to be stripped
+			//   CS8    -- a bit mask setting the character size (CS)
+			currentFlags.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+			currentFlags.c_oflag &= ~(OPOST);
+			currentFlags.c_cflag |= (CS8);
+			currentFlags.c_lflag &= ~(ECHO | ICANON | IEXTEN | ISIG);
+			// set the minimum number of bytes of input needed before read() can
+			// return setting to 0 means, that read() returns as soon as there is any
+			// input
+			currentFlags.c_cc[VMIN] = 0;
+			// set the maximum amount of time to wait before read() return to 100 ms
+			currentFlags.c_cc[VTIME] = 1;
+
+			if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &currentFlags) == -1) {
+				// die("tcsetattr");
+			}
+			break;
+		case TerminalMode::Cbreak:
+			break;
+		case TerminalMode::Cooked:
+			if (tcsetattr(STDIN_FILENO, TCSAFLUSH, &initFlags) == -1) {
+				// die("tcsetattr");
+			}
+			break;
+		default:
+			break;
+	}
+
+	return currentMode;
 }
+
+void
+Terminal::ResetMode()
+{}
 
 int
 Terminal::GetWindowSize()

@@ -13,7 +13,8 @@ main(int argc, char* argv[])
 	Terminal terminal{};
 	Editor   editor{};
 
-	terminal.ToggleRawMode(true);
+	terminal.SetMode(TerminalMode::Raw);
+
 	if (terminal.GetWindowSize() == -1) {
 		throw("GetWindowSize");
 	}
@@ -32,7 +33,8 @@ main(int argc, char* argv[])
 		editor.ProcessKeypress();
 	}
 
-	terminal.ToggleRawMode(false);
+	terminal.SetMode(TerminalMode::Cooked);
+	// terminal.ResetMode();
 
 	return 0;
 }

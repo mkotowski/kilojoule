@@ -2,20 +2,32 @@
 
 #include <termios.h>
 
+enum class TerminalMode
+{
+	Raw,
+	Cbreak, // "Rare"
+	Cooked,
+};
+
+using TerminalFlags = termios;
+
 class Terminal
 {
 private:
-	termios initTermios{};
-	termios currentTermios{};
+	TerminalFlags initFlags{};
+	TerminalFlags currentFlags{};
 
 	int rows{ 0 };
 	int columns{ 0 };
 
+	TerminalMode currentMode = TerminalMode::Cooked;
+
 public:
-	Terminal(/* args */) = default;
+	Terminal(/* args */);
 	~Terminal() = default;
 
-	int ToggleRawMode(bool state);
+	TerminalMode SetMode(TerminalMode newMode);
+	void         ResetMode();
 
 	int GetWindowSize();
 	int GetCursorPosition();
