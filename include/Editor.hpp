@@ -41,11 +41,6 @@ struct editorConfig
 };
 
 // append buffer
-struct abuf
-{
-	char* b;
-	int   len;
-};
 
 class Editor
 {
@@ -70,9 +65,9 @@ public:
 	void        InsertRow(int at, const char* s, size_t len);
 	void        UpdateRow(erow* row);
 	void        ProcessKeypress();
-	void        DrawMessageBar(struct abuf* ab);
-	void        DrawStatusBar(struct abuf* ab);
-	void        DrawRows(struct abuf* ab);
+	void        DrawMessageBar(std::string& ab);
+	void        DrawStatusBar(std::string& ab);
+	void        DrawRows(std::string& ab);
 	void        FreeRow(erow* row);
 	void        Scroll();
 	int         RowCxToRx(erow* row, int cx);

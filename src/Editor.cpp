@@ -496,7 +496,7 @@ Editor::Open(const char* filename)
 	FILE* fp = fopen(filename, "r");
 #endif
 
-	if (!fp) {
+	if (fp == nullptr) {
 		throw("fopen");
 	}
 
@@ -709,32 +709,20 @@ Editor::SetStatusMessage(const char* fmt, ...)
 	config.statusmsg_time = time(nullptr);
 }
 
-#define ABUF_INIT                                                              \
-	{                                                                            \
-		nullptr, 0                                                                 \
-	}
-
 void
-abAppend(struct abuf* ab, const char* s, int len)
+abAppend(std::string& ab, const char* s, int len)
 {
-	char* newAb = (char*)realloc(ab->b, ab->len + len);
-
-	if (newAb == nullptr) {
-		return;
-	}
-	memcpy(&newAb[ab->len], s, len);
-	ab->b = newAb;
-	ab->len += len;
+	ab.append(s, len);
 }
 
 void
-abFree(struct abuf* ab)
+abFree(std::string& ab)
 {
-	free(ab->b);
+	ab.clear();
 }
 
 void
-Editor::DrawStatusBar(struct abuf* ab)
+Editor::DrawStatusBar(std::string& ab)
 {
 	abAppend(ab, "\x1b[7m", 4);
 
@@ -773,7 +761,7 @@ Editor::DrawStatusBar(struct abuf* ab)
 }
 
 void
-Editor::DrawMessageBar(struct abuf* ab)
+Editor::DrawMessageBar(std::string& ab)
 {
 	abAppend(ab, "\x1b[K", 3);
 	int msglen = static_cast<int>(strlen(config.statusmsg));
@@ -786,7 +774,7 @@ Editor::DrawMessageBar(struct abuf* ab)
 }
 
 void
-Editor::DrawRows(struct abuf* ab)
+Editor::DrawRows(std::string& ab)
 {
 	int y;
 	for (y = 0; y < config.screenrows; y++) {
@@ -922,14 +910,14 @@ Editor::RefreshScreen()
 {
 	Scroll();
 
-	struct abuf ab = ABUF_INIT;
+	std::string ab{};
 
-	abAppend(&ab, "\x1b[?25l", 6);
-	abAppend(&ab, "\x1b[H", 3);
+	abAppend(ab, "\x1b[?25l", 6);
+	abAppend(ab, "\x1b[H", 3);
 
-	DrawRows(&ab);
-	DrawStatusBar(&ab);
-	DrawMessageBar(&ab);
+	DrawRows(ab);
+	DrawStatusBar(ab);
+	DrawMessageBar(ab);
 
 	char buf[32];
 	snprintf(buf,
@@ -937,12 +925,12 @@ Editor::RefreshScreen()
 	         "\x1b[%d;%dH",
 	         (config.cy - config.rowoff) + 1,
 	         (config.rx - config.coloff) + 1);
-	abAppend(&ab, buf, static_cast<int>(strlen(buf)));
+	abAppend(ab, buf, static_cast<int>(strlen(buf)));
 
-	abAppend(&ab, "\x1b[?25h", 6);
+	abAppend(ab, "\x1b[?25h", 6);
 
-	write(STDOUT_FILENO, ab.b, ab.len);
-	abFree(&ab);
+	write(STDOUT_FILENO, ab.c_str(), ab.length());
+	abFree(ab);
 }
 
 void
