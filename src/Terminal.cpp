@@ -48,11 +48,14 @@ Terminal::SetMode(TerminalMode newMode)
 			currentFlags &= ~ENABLE_ECHO_INPUT;
 			currentFlags &= ~ENABLE_LINE_INPUT;
 			currentFlags &= ~ENABLE_PROCESSED_INPUT;
+			currentFlags |= ENABLE_VIRTUAL_TERMINAL_INPUT;
 			// currentFlags &= ~ENABLE_INSERT_MODE;
 			SetConsoleMode(G_in_bufhdl, currentFlags);
 
 			GetConsoleMode(G_out_bufhdl, &newOut);
 			newOut &= ~ENABLE_WRAP_AT_EOL_OUTPUT;
+			newOut |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+			newOut |= DISABLE_NEWLINE_AUTO_RETURN;
 			// newOut &= ~ENABLE_PROCESSED_OUTPUT;
 			SetConsoleMode(G_out_bufhdl, newOut);
 #else
