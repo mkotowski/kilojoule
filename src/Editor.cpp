@@ -548,8 +548,8 @@ Editor::ProcessKeypress()
 				quit_times--;
 				return;
 			}
-			write(STDOUT_FILENO, "\x1b[2J", 4);
-			write(STDOUT_FILENO, "\x1b[H", 3);
+			write(STDOUT_FILENO, escapeSequences::clearEntireScreen, 4);
+			write(STDOUT_FILENO, escapeSequences::cursorRepositionLeftmostTop, 3);
 			shouldClose = true;
 			break;
 		case '\r':
@@ -623,7 +623,7 @@ Editor::SetStatusMessage(const char* fmt, ...)
 void
 Editor::DrawStatusBar(std::string& ab)
 {
-	ab.append("\x1b[7m");
+	ab.append(escapeSequences::color::reverse);
 
 	char status[80], rstatus[80];
 
@@ -656,14 +656,14 @@ Editor::DrawStatusBar(std::string& ab)
 			len++;
 		}
 	}
-	ab.append("\x1b[m");
+	ab.append(escapeSequences::color::reset);
 	ab.append("\r\n");
 }
 
 void
 Editor::DrawMessageBar(std::string& ab)
 {
-	ab.append("\x1b[K", 3);
+	ab.append(escapeSequences::eraseInLine);
 	int msglen = static_cast<int>(strlen(config.statusmsg));
 	if (msglen > config.screencols) {
 		msglen = config.screencols;
@@ -719,7 +719,7 @@ Editor::DrawRows(std::string& ab)
 			for (int j = 0; j < len; j++) {
 				if (hl[j] == HL_NORMAL) {
 					if (current_color != -1) {
-						ab.append("\x1b[39m");
+						ab.append(escapeSequences::color::defaultForeground);
 						current_color = -1;
 					}
 					ab.append(&c[j], 1);
@@ -734,10 +734,10 @@ Editor::DrawRows(std::string& ab)
 					ab.append(&c[j]);
 				}
 			}
-			ab.append("\x1b[39m");
+			ab.append(escapeSequences::color::defaultForeground);
 		}
 
-		ab.append("\x1b[K");
+		ab.append(escapeSequences::eraseInLine);
 		ab.append("\r\n");
 	}
 }
@@ -812,8 +812,8 @@ Editor::RefreshScreen()
 
 	std::string ab{};
 
-	ab.append("\x1b[?25l");
-	ab.append("\x1b[H");
+	ab.append(escapeSequences::hideCursor);
+	ab.append(escapeSequences::cursorRepositionLeftmostTop);
 
 	DrawRows(ab);
 	DrawStatusBar(ab);
@@ -827,7 +827,7 @@ Editor::RefreshScreen()
 	         (config.rx - config.coloff) + 1);
 	ab.append(buf);
 
-	ab.append("\x1b[?25h");
+	ab.append(escapeSequences::showCursor);
 
 	write(STDOUT_FILENO, ab.c_str(), ab.length());
 	ab.clear();

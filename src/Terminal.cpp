@@ -125,7 +125,8 @@ Terminal::GetWindowSize()
 #if defined(_WIN32)
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi) == 0) {
-		if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) {
+		if (write(STDOUT_FILENO, escapeSequences::cursorMaxForwardAndDown, 12) !=
+		    12) {
 			return -1;
 		}
 		return GetCursorPosition();
@@ -136,7 +137,8 @@ Terminal::GetWindowSize()
 	struct winsize ws;
 
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
-		if (write(STDOUT_FILENO, "\x1b[999C\x1b[999B", 12) != 12) {
+		if (write(STDOUT_FILENO, escapeSequences::cursorMaxForwardAndDown, 12) !=
+		    12) {
 			return -1;
 		}
 		return GetCursorPosition();
@@ -155,7 +157,9 @@ Terminal::GetCursorPosition()
 	std::array<char, 32> buf;
 	unsigned int         i = 0;
 
-	if (write(STDOUT_FILENO, "\x1b[6n", 4) != 4) {
+	if (write(STDOUT_FILENO,
+	          escapeSequences::deviceStatusReport::cursorPosition,
+	          4) != 4) {
 		return -1;
 	}
 
