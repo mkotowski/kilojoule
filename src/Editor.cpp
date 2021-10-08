@@ -9,81 +9,11 @@
 #include <unistd.h>
 #endif
 
-#if defined(_WIN32)
-#define close _close
-#define open  _open
-
-/* This code is public domain -- Will Hartung 4/9/09 */
-#include <stdio.h>
-#include <stdlib.h>
-
-typedef long ssize_t;
-
-ssize_t
-getline(char** lineptr, size_t* n, FILE* stream)
-{
-	char*  bufptr = NULL;
-	char*  p = bufptr;
-	size_t size;
-	int    c;
-
-	if (lineptr == NULL) {
-		return -1;
-	}
-	if (stream == NULL) {
-		return -1;
-	}
-	if (n == NULL) {
-		return -1;
-	}
-	bufptr = *lineptr;
-	size = *n;
-
-	c = fgetc(stream);
-	if (c == EOF) {
-		return -1;
-	}
-	if (bufptr == NULL) {
-		bufptr = (char*)malloc(128);
-		if (bufptr == NULL) {
-			return -1;
-		}
-		size = 128;
-	}
-	p = bufptr;
-	while (c != EOF) {
-		if (static_cast<int>(p - bufptr) > static_cast<int>(size - 1)) {
-			size = size + 128;
-			bufptr = (char*)realloc(bufptr, size);
-			if (bufptr == NULL) {
-				return -1;
-			}
-		}
-		*p++ = static_cast<char>(c);
-		if (c == '\n') {
-			break;
-		}
-		c = fgetc(stream);
-	}
-
-	*p++ = '\0';
-	*lineptr = bufptr;
-	*n = size;
-
-	return static_cast<long>(p - bufptr - 1);
-}
-
-#endif
-
 #include "constants.hpp"
 #include "Editor.hpp"
 #include "Terminal.hpp"
 
 #define CTRL_KEY(k) ((k)&0x1f)
-
-// Editor::Editor(/* args */) {}
-
-// Editor::~Editor() {}
 
 #define HL_HIGHLIGHT_NUMBERS (1 << 0)
 #define HL_HIGHLIGHT_STRINGS (1 << 1)
