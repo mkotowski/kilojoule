@@ -3,6 +3,7 @@
 #include <ctime> // time_t
 #include <memory>
 #include <array>
+#include <string>
 
 class Terminal;
 
@@ -60,7 +61,7 @@ public:
 
 	void        SetStatusMessage(const char* fmt, ...);
 	void        RefreshScreen();
-	const char* Prompt(const char* prompt, void (*callback)(char*, int));
+	std::string Prompt(const char* prompt, void (*callback)(const char*, int));
 	int         ReadKey();
 	void        Open(const char* filename);
 	void        InsertRow(int at, const char* s, size_t len);
@@ -86,7 +87,7 @@ public:
 	void        Find();
 	void        SelectSyntaxHighlight();
 	static int  SyntaxToColor(int hl);
-	static void FindCallback(char* query, int key);
+	static void FindCallback(const char* query, int key);
 
 	void UpdateSyntax(erow* row);
 

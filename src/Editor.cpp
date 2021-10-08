@@ -4,6 +4,7 @@
 #include <cstdarg> // va_start va_end
 
 #include <fstream>
+#include <string>
 
 #if defined(__linux__)
 #include <unistd.h>
@@ -819,12 +820,9 @@ Editor::RefreshScreen()
 	DrawStatusBar(ab);
 	DrawMessageBar(ab);
 
-	char buf[32];
-	snprintf(buf,
-	         sizeof(buf),
-	         "\x1b[%d;%dH",
-	         (config.cy - config.rowoff) + 1,
-	         (config.rx - config.coloff) + 1);
+	std::string buf("\x1b[" + std::to_string((config.cy - config.rowoff) + 1) +
+	                ";" + std::to_string((config.rx - config.coloff) + 1) + "H");
+
 	ab.append(buf);
 
 	ab.append(escapeSequences::showCursor);
@@ -867,7 +865,7 @@ Editor::Save()
 }
 
 void
-Editor::FindCallback(char* query, int key)
+Editor::FindCallback(const char* query, int key)
 {
 	query = nullptr;
 	key = 1;
@@ -933,12 +931,10 @@ Editor::Find()
 	int saved_coloff = config.coloff;
 	int saved_rowoff = config.rowoff;
 
-	const char* query =
+	std::string query_str =
 	  Prompt("Search: %s (Use Arrows/Enter; ESC to cancel)", FindCallback);
 
-	if (query) {
-		free((char*)query);
-	} else {
+	if (!query_str.empty()) {
 		config.cx = saved_cx;
 		config.cy = saved_cy;
 		config.coloff = saved_coloff;
@@ -946,50 +942,39 @@ Editor::Find()
 	}
 }
 
-const char*
-Editor::Prompt(const char* prompt, void (*callback)(char*, int))
+std::string
+Editor::Prompt(const char* prompt, void (*callback)(const char*, int))
 {
-	size_t bufsize = 128;
-	char*  buf = (char*)malloc(bufsize);
+	std::string buf{};
 
-	size_t buflen = 0;
-	buf[0] = '\0';
-
-	while (1) {
-		SetStatusMessage(prompt, buf);
+	while (true) {
+		SetStatusMessage(prompt, buf.c_str());
 		RefreshScreen();
 
 		int c = ReadKey();
 		if (c == DEL_KEY || c == CTRL_KEY('h') || c == BACKSPACE) {
-			if (buflen != 0)
-				buf[--buflen] = '\0';
+			if (!buf.empty()) {
+				buf.pop_back();
+			}
 		} else if (c == '\x1b') {
 			SetStatusMessage("");
-			if (callback)
-				callback(buf, c);
-			free(buf);
-			return NULL;
+			if (callback != nullptr) {
+				callback(const_cast<char*>(buf.c_str()), c);
+			}
+			return nullptr;
 		} else if (c == '\r') {
-			if (buflen != 0) {
+			if (!buf.empty()) {
 				SetStatusMessage("");
-				if (callback)
-					callback(buf, c);
+				if (callback != nullptr) {
+					callback(const_cast<char*>(buf.c_str()), c);
+				}
 				return buf;
 			}
-		} else if (!iscntrl(c) && c < 128) {
-			if (buflen == bufsize - 1) {
-				bufsize *= 2;
-
-				buf = (char*)realloc(buf, bufsize);
-
-				if (buf == nullptr) {
-					free(buf);
-				}
-			}
-			buf[buflen++] = static_cast<char>(c);
-			buf[buflen] = '\0';
+		} else if (static_cast<bool>(isprint(c))) {
+			buf += static_cast<char>(c);
 		}
-		if (callback)
-			callback(buf, c);
+		if (callback != nullptr) {
+			callback(const_cast<char*>(buf.c_str()), c);
+		}
 	}
 }
