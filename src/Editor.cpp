@@ -732,7 +732,7 @@ Editor::DrawRows(std::string& ab)
 						int  clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
 						ab.append(buf, clen);
 					}
-					ab.append(&c[j]);
+					ab.append(&c[j], 1);
 				}
 			}
 			ab.append(escapeSequences::color::defaultForeground);
@@ -867,60 +867,57 @@ Editor::Save()
 void
 Editor::FindCallback(const char* query, int key)
 {
-	query = nullptr;
-	key = 1;
-	if (query != nullptr && key > 2)
-		exit(1);
-	// static int last_match = -1;
-	// static int direction = 1;
+	static int last_match = -1;
+	static int direction = 1;
 
-	// static int   saved_hl_line;
-	// static char* saved_hl = NULL;
+	static int   saved_hl_line;
+	static char* saved_hl = NULL;
 
-	// if (saved_hl) {
-	// 	memcpy(
-	// 	  config.row[saved_hl_line].hl, saved_hl,
-	// config.row[saved_hl_line].rsize); 	free(saved_hl); 	saved_hl = NULL;
-	// }
+	if (saved_hl) {
+		memcpy(
+		  config.row[saved_hl_line].hl, saved_hl, config.row[saved_hl_line].rsize);
+		free(saved_hl);
+		saved_hl = NULL;
+	}
 
-	// if (key == '\r' || key == '\x1b') {
-	// 	last_match = -1;
-	// 	direction = 1;
-	// 	return;
-	// } else if (key == ARROW_RIGHT || key == ARROW_DOWN) {
-	// 	direction = 1;
-	// } else if (key == ARROW_LEFT || key == ARROW_UP) {
-	// 	direction = -1;
-	// } else {
-	// 	last_match = -1;
-	// 	direction = 1;
-	// }
+	if (key == '\r' || key == '\x1b') {
+		last_match = -1;
+		direction = 1;
+		return;
+	} else if (key == ARROW_RIGHT || key == ARROW_DOWN) {
+		direction = 1;
+	} else if (key == ARROW_LEFT || key == ARROW_UP) {
+		direction = -1;
+	} else {
+		last_match = -1;
+		direction = 1;
+	}
 
-	// if (last_match == -1)
-	// 	direction = 1;
-	// int current = last_match;
-	// for (int i = 0; i < config.numrows; i++) {
-	// 	current += direction;
-	// 	if (current == -1)
-	// 		current = config.numrows - 1;
-	// 	else if (current == config.numrows)
-	// 		current = 0;
+	if (last_match == -1)
+		direction = 1;
+	int current = last_match;
+	for (int i = 0; i < config.numrows; i++) {
+		current += direction;
+		if (current == -1)
+			current = config.numrows - 1;
+		else if (current == config.numrows)
+			current = 0;
 
-	// 	erow* row = &config.row[current];
-	// 	char* match = strstr(row->render, query);
-	// 	if (match) {
-	// 		last_match = current;
-	// 		config.cy = current;
-	// 		config.cx = RowRxToCx(row, match - row->render);
-	// 		config.rowoff = config.numrows;
+		erow* row = &config.row[current];
+		char* match = strstr(row->render, query);
+		if (match) {
+			last_match = current;
+			config.cy = current;
+			config.cx = RowRxToCx(row, match - row->render);
+			config.rowoff = config.numrows;
 
-	// 		saved_hl_line = current;
-	// 		saved_hl = (char*)malloc(row->rsize);
-	// 		memcpy(saved_hl, row->hl, row->rsize);
-	// 		memset(&row->hl[match - row->render], HL_MATCH, strlen(query));
-	// 		break;
-	// 	}
-	// }
+			saved_hl_line = current;
+			saved_hl = (char*)malloc(row->rsize);
+			memcpy(saved_hl, row->hl, row->rsize);
+			memset(&row->hl[match - row->render], HL_MATCH, strlen(query));
+			break;
+		}
+	}
 }
 
 void
@@ -931,8 +928,11 @@ Editor::Find()
 	int saved_coloff = config.coloff;
 	int saved_rowoff = config.rowoff;
 
-	std::string query_str =
-	  Prompt("Search: %s (Use Arrows/Enter; ESC to cancel)", FindCallback);
+	std::string query_str = Prompt("Search: %s (Use Arrows/Enter; ESC to cancel)",
+	                               std::bind(&Editor::FindCallback,
+	                                         this,
+	                                         std::placeholders::_1,
+	                                         std::placeholders::_2));
 
 	if (!query_str.empty()) {
 		config.cx = saved_cx;
@@ -943,7 +943,8 @@ Editor::Find()
 }
 
 std::string
-Editor::Prompt(const char* prompt, void (*callback)(const char*, int))
+Editor::Prompt(const char*                           prompt,
+               std::function<void(const char*, int)> callback)
 {
 	std::string buf{};
 
@@ -961,7 +962,7 @@ Editor::Prompt(const char* prompt, void (*callback)(const char*, int))
 			if (callback != nullptr) {
 				callback(const_cast<char*>(buf.c_str()), c);
 			}
-			return nullptr;
+			return {};
 		} else if (c == '\r') {
 			if (!buf.empty()) {
 				SetStatusMessage("");
