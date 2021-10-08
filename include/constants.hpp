@@ -26,20 +26,20 @@ constexpr Platform BuildPlatform = Platform::Windows;
 #endif
 
 namespace escapeSequences {
-const char* eraseInLine = "\x1b[K";
-const char* hideCursor = "\x1b[?25l";
-const char* showCursor = "\x1b[?25h";
-const char* cursorMaxForward = "\x1b[999C";
-const char* cursorMaxDown = "\x1b[999B";
-const char* cursorMaxForwardAndDown = "\x1b[999C\x1b[999B";
-const char* cursorRepositionLeftmostTop = "\x1b[H";
-const char* clearEntireScreen = "\x1b[2J";
+inline const char* eraseInLine = "\x1b[K";
+inline const char* hideCursor = "\x1b[?25l";
+inline const char* showCursor = "\x1b[?25h";
+inline const char* cursorMaxForward = "\x1b[999C";
+inline const char* cursorMaxDown = "\x1b[999B";
+inline const char* cursorMaxForwardAndDown = "\x1b[999C\x1b[999B";
+inline const char* cursorRepositionLeftmostTop = "\x1b[H";
+inline const char* clearEntireScreen = "\x1b[2J";
 namespace color {
-const char* reset = "\x1b[m";
-const char* reverse = "\x1b[7m";
-const char* defaultForeground = "\x1b[39m";
+inline const char* reset = "\x1b[m";
+inline const char* reverse = "\x1b[7m";
+inline const char* defaultForeground = "\x1b[39m";
 }
 namespace deviceStatusReport {
-const char* cursorPosition = "\x1b[6n";
+inline const char* cursorPosition = "\x1b[6n";
 }
 }
