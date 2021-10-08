@@ -19,7 +19,7 @@ if(CMAKE_CXX_CLANG_TIDY)
     list(APPEND CMAKE_CXX_CLANG_TIDY
         "--extra-arg-before=-std=c++17"
         "-header-filter=."
-        "-checks=-*,clang-analyzer-*,modernize-*,readability-*,-modernize-use-trailing-return-type"
+        "-checks=-*,clang-analyzer-*,modernize-*,readability-*,-modernize-use-trailing-return-type,-modernize-avoid-bind"
     )
 endif()
 
@@ -61,13 +61,7 @@ add_executable(${TARGET_NAME}
     ${executable_header_files} ${executable_source_files}
 )
 
-
-
 if(PATH_INCLUDE_WHAT_YOU_USE)	
-    list(APPEND PATH_INCLUDE_WHAT_YOU_USE
-        "--transitive_includes_only"
-    )
-
 	set_property(TARGET ${TARGET_NAME} 
     	PROPERTY CXX_INCLUDE_WHAT_YOU_USE
     		"${PATH_INCLUDE_WHAT_YOU_USE}"
