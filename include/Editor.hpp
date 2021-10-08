@@ -64,18 +64,18 @@ public:
 	void        RefreshScreen();
 	std::string Prompt(const char*                           prompt,
 	                   std::function<void(const char*, int)> callback);
-	int         ReadKey();
+	static int  ReadKey();
 	void        Open(const char* filename);
 	void        InsertRow(int at, const char* s, size_t len);
 	void        UpdateRow(erow* row);
 	void        ProcessKeypress();
 	void        DrawMessageBar(std::string& ab);
-	void        DrawStatusBar(std::string& ab);
-	void        DrawRows(std::string& ab);
-	void        FreeRow(erow* row);
+	void        DrawStatusBar(std::string& ab) const;
+	void        DrawRows(std::string& ab) const;
+	static void FreeRow(erow* row);
 	void        Scroll();
-	int         RowCxToRx(erow* row, int cx);
-	int         RowRxToCx(erow* row, int rx);
+	static int  RowCxToRx(erow* row, int cx);
+	static int  RowRxToCx(erow* row, int rx);
 	void        MoveCursor(int key);
 	void        DelRow(int at);
 	void        RowInsertChar(erow* row, int at, int c);
@@ -84,7 +84,7 @@ public:
 	void        InsertChar(int c);
 	void        InsertNewline();
 	void        DelChar();
-	char*       RowsToString(int* buflen);
+	char*       RowsToString(int* buflen) const;
 	void        Save();
 	void        Find();
 	void        SelectSyntaxHighlight();

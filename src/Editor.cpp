@@ -69,8 +69,9 @@ void
 Editor::SelectSyntaxHighlight()
 {
 	config.syntax = nullptr;
-	if (config.filename.c_str() == nullptr)
+	if (config.filename.c_str() == nullptr) {
 		return;
+	}
 
 	const char* ext = strrchr(config.filename.c_str(), '.');
 
@@ -78,7 +79,7 @@ Editor::SelectSyntaxHighlight()
 		struct editorSyntax* s = &HLDB[j];
 		unsigned int         i = 0;
 		while (s->filematch[i]) {
-			int is_ext = (s->filematch[i][0] == '.');
+			bool is_ext = (s->filematch[i][0] == '.');
 			if ((is_ext && ext && !strcmp(ext, s->filematch[i])) ||
 			    (!is_ext && strstr(config.filename.c_str(), s->filematch[i]))) {
 				config.syntax = s;
@@ -292,10 +293,12 @@ Editor::InsertNewline()
 void
 Editor::DelChar()
 {
-	if (config.cy == config.numrows)
+	if (config.cy == config.numrows) {
 		return;
-	if (config.cx == 0 && config.cy == 0)
+	}
+	if (config.cx == 0 && config.cy == 0) {
 		return;
+	}
 
 	erow* row = &config.row[config.cy];
 	if (config.cx > 0) {
@@ -310,7 +313,7 @@ Editor::DelChar()
 }
 
 char*
-Editor::RowsToString(int* buflen)
+Editor::RowsToString(int* buflen) const
 {
 	int totlen = 0;
 
@@ -345,7 +348,7 @@ Editor::ReadKey()
 	}
 
 	if (c == '\x1b') {
-		char seq[3];
+		std::array<char, 3> seq;
 
 		if (read(STDIN_FILENO, &seq[0], 1) != 1) {
 			return '\x1b';
@@ -403,9 +406,8 @@ Editor::ReadKey()
 			}
 		}
 		return '\x1b';
-	} else {
-		return c;
 	}
+	return c;
 }
 
 void
@@ -433,8 +435,9 @@ Editor::Open(const char* filename)
 void
 Editor::InsertRow(int at, const char* s, size_t len)
 {
-	if (at < 0 || at > config.numrows)
+	if (at < 0 || at > config.numrows) {
 		return;
+	}
 
 	config.row = (erow*)realloc(config.row, sizeof(erow) * (config.numrows + 1));
 	memmove(
@@ -489,7 +492,7 @@ Editor::UpdateRow(erow* row)
 void
 Editor::MoveCursor(int key)
 {
-	erow* row = (config.cy >= config.numrows) ? NULL : &config.row[config.cy];
+	erow* row = (config.cy >= config.numrows) ? nullptr : &config.row[config.cy];
 
 	switch (key) {
 		case ARROW_LEFT:
@@ -504,11 +507,11 @@ Editor::MoveCursor(int key)
 			break;
 		case ARROW_RIGHT:
 			// Limit scrolling to the right
-			if (row && config.cx < row->size) {
+			if (row != nullptr && config.cx < row->size) {
 				config.cx++;
 			}
 			// Move down when moving right at the end of a line
-			else if (row && config.cx == row->size) {
+			else if (row != nullptr && config.cx == row->size) {
 				config.cy++;
 				config.cx = 0;
 			}
@@ -526,8 +529,8 @@ Editor::MoveCursor(int key)
 	}
 
 	// Snap cursor to end of line
-	row = (config.cy >= config.numrows) ? NULL : &config.row[config.cy];
-	int rowlen = row ? row->size : 0;
+	row = (config.cy >= config.numrows) ? nullptr : &config.row[config.cy];
+	int rowlen = row != nullptr ? row->size : 0;
 	if (config.cx > rowlen) {
 		config.cx = rowlen;
 	}
@@ -585,8 +588,9 @@ Editor::ProcessKeypress()
 				config.cy = config.rowoff;
 			} else if (c == PAGE_DOWN) {
 				config.cy = config.rowoff + config.screenrows - 1;
-				if (config.cy > config.numrows)
+				if (config.cy > config.numrows) {
 					config.cy = config.numrows;
+				}
 			}
 
 			int times = config.screenrows;
@@ -622,26 +626,27 @@ Editor::SetStatusMessage(const char* fmt, ...)
 }
 
 void
-Editor::DrawStatusBar(std::string& ab)
+Editor::DrawStatusBar(std::string& ab) const
 {
 	ab.append(escapeSequences::color::reverse);
 
 	char status[80], rstatus[80];
 
-	int len =
-	  snprintf(status,
-	           sizeof(status),
-	           "%.20s - %d lines %s",
-	           config.filename.c_str() ? config.filename.c_str() : "[No Name]",
-	           config.numrows,
-	           config.dirty ? "(modified)" : "");
+	int len = snprintf(
+	  status,
+	  sizeof(status),
+	  "%.20s - %d lines %s",
+	  config.filename.c_str() != nullptr ? config.filename.c_str() : "[No Name]",
+	  config.numrows,
+	  static_cast<bool>(config.dirty) ? "(modified)" : "");
 
-	int rlen = snprintf(rstatus,
-	                    sizeof(rstatus),
-	                    "%s | %d/%d",
-	                    config.syntax ? config.syntax->filetype : "no ft",
-	                    config.cy + 1,
-	                    config.numrows);
+	int rlen =
+	  snprintf(rstatus,
+	           sizeof(rstatus),
+	           "%s | %d/%d",
+	           config.syntax != nullptr ? config.syntax->filetype : "no ft",
+	           config.cy + 1,
+	           config.numrows);
 
 	if (len > config.screencols) {
 		len = config.screencols;
@@ -652,10 +657,9 @@ Editor::DrawStatusBar(std::string& ab)
 		if (config.screencols - len == rlen) {
 			ab.append(rstatus, rlen);
 			break;
-		} else {
-			ab.append(" ");
-			len++;
 		}
+		ab.append(" ");
+		len++;
 	}
 	ab.append(escapeSequences::color::reset);
 	ab.append("\r\n");
@@ -669,13 +673,13 @@ Editor::DrawMessageBar(std::string& ab)
 	if (msglen > config.screencols) {
 		msglen = config.screencols;
 	}
-	if (msglen && time(NULL) - config.statusmsg_time < 5) {
+	if (static_cast<bool>(msglen) && time(nullptr) - config.statusmsg_time < 5) {
 		ab.append(config.statusmsg.data());
 	}
 }
 
 void
-Editor::DrawRows(std::string& ab)
+Editor::DrawRows(std::string& ab) const
 {
 	int y;
 	for (y = 0; y < config.screenrows; y++) {
@@ -692,11 +696,11 @@ Editor::DrawRows(std::string& ab)
 					welcomelen = config.screencols;
 				}
 				int padding = (config.screencols - welcomelen) / 2;
-				if (padding) {
+				if (static_cast<bool>(padding)) {
 					ab.append("~");
 					padding--;
 				}
-				while (padding--)
+				while (static_cast<bool>(padding--))
 					ab.append(" ");
 				ab.append(welcome, welcomelen);
 			} else {
@@ -778,8 +782,9 @@ Editor::RowRxToCx(erow* row, int rx)
 		}
 		cur_rx++;
 
-		if (cur_rx > rx)
+		if (cur_rx > rx) {
 			return cx;
+		}
 	}
 	return cx;
 }
@@ -871,20 +876,22 @@ Editor::FindCallback(const char* query, int key)
 	static int direction = 1;
 
 	static int   saved_hl_line;
-	static char* saved_hl = NULL;
+	static char* saved_hl = nullptr;
 
-	if (saved_hl) {
+	if (saved_hl != nullptr) {
 		memcpy(
 		  config.row[saved_hl_line].hl, saved_hl, config.row[saved_hl_line].rsize);
 		free(saved_hl);
-		saved_hl = NULL;
+		saved_hl = nullptr;
 	}
 
 	if (key == '\r' || key == '\x1b') {
 		last_match = -1;
 		direction = 1;
 		return;
-	} else if (key == ARROW_RIGHT || key == ARROW_DOWN) {
+	}
+
+	if (key == ARROW_RIGHT || key == ARROW_DOWN) {
 		direction = 1;
 	} else if (key == ARROW_LEFT || key == ARROW_UP) {
 		direction = -1;
@@ -893,19 +900,21 @@ Editor::FindCallback(const char* query, int key)
 		direction = 1;
 	}
 
-	if (last_match == -1)
+	if (last_match == -1) {
 		direction = 1;
+	}
 	int current = last_match;
 	for (int i = 0; i < config.numrows; i++) {
 		current += direction;
-		if (current == -1)
+		if (current == -1) {
 			current = config.numrows - 1;
-		else if (current == config.numrows)
+		} else if (current == config.numrows) {
 			current = 0;
+		}
 
 		erow* row = &config.row[current];
 		char* match = strstr(row->render, query);
-		if (match) {
+		if (match != nullptr) {
 			last_match = current;
 			config.cy = current;
 			config.cx = RowRxToCx(row, match - row->render);
