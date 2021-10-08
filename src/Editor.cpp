@@ -1,9 +1,9 @@
 #include <cerrno>
-#include <cstdio>  // fopen, getline
-#include <cstring> // strdup
+#include <cstring>
 #include <cstdlib> // free
 #include <cstdarg> // va_start va_end
-#include <fcntl.h> // O_RDWR | O_CREAT
+
+#include <fstream>
 
 #if defined(__linux__)
 #include <unistd.h>
@@ -138,10 +138,10 @@ void
 Editor::SelectSyntaxHighlight()
 {
 	config.syntax = nullptr;
-	if (config.filename == nullptr)
+	if (config.filename.c_str() == nullptr)
 		return;
 
-	const char* ext = strrchr(config.filename, '.');
+	const char* ext = strrchr(config.filename.c_str(), '.');
 
 	for (unsigned int j = 0; j < HLDB_ENTRIES; j++) {
 		struct editorSyntax* s = &HLDB[j];
@@ -149,7 +149,7 @@ Editor::SelectSyntaxHighlight()
 		while (s->filematch[i]) {
 			int is_ext = (s->filematch[i][0] == '.');
 			if ((is_ext && ext && !strcmp(ext, s->filematch[i])) ||
-			    (!is_ext && strstr(config.filename, s->filematch[i]))) {
+			    (!is_ext && strstr(config.filename.c_str(), s->filematch[i]))) {
 				config.syntax = s;
 
 				int filerow;
@@ -177,17 +177,13 @@ Editor::Init(std::shared_ptr<Terminal> term)
 	config.numrows = 0;
 	config.row = nullptr;
 	config.dirty = 0;
-	config.filename = nullptr;
+	config.filename.clear();
 	config.statusmsg[0] = '\0';
 	config.statusmsg_time = 0;
 	config.syntax = nullptr;
 
 	config.screenrows = terminal->GetRows();
 	config.screencols = terminal->GetColumns();
-
-	// if (getWindowSize(&config.screenrows, &config.screencols) ==
-	// -1) { 	die("getWindowSize");
-	// }
 
 	// Adjust for the status prompt
 	config.screenrows -= 2;
@@ -484,37 +480,22 @@ Editor::ReadKey()
 void
 Editor::Open(const char* filename)
 {
-	config.filename = strdup(filename);
+	config.filename = filename;
 
 	SelectSyntaxHighlight();
 
-#ifdef _WIN32
-	FILE*  fp;
-	FILE** fpp = &fp;
-	fopen_s(fpp, filename, "r");
-#else
-	FILE* fp = fopen(filename, "r");
-#endif
+	std::string   line{};
+	std::ifstream file(filename);
 
-	if (fp == nullptr) {
-		throw("fopen");
-	}
-
-	char*   line = nullptr;
-	size_t  linecap = 0;
-	ssize_t linelen;
-
-	while ((linelen = getline(&line, &linecap, fp)) != -1) {
-		while (linelen > 0 &&
-		       (line[linelen - 1] == '\n' || line[linelen - 1] == '\r')) {
-			linelen--;
+	if (file.is_open()) {
+		while (getline(file, line)) {
+			InsertRow(config.numrows, line.c_str(), line.size());
 		}
-
-		InsertRow(config.numrows, line, linelen);
+		file.close();
+	} else {
+		// TODO
 	}
 
-	free(line);
-	fclose(fp);
 	config.dirty = 0;
 }
 
@@ -728,12 +709,13 @@ Editor::DrawStatusBar(std::string& ab)
 
 	char status[80], rstatus[80];
 
-	int len = snprintf(status,
-	                   sizeof(status),
-	                   "%.20s - %d lines %s",
-	                   config.filename ? config.filename : "[No Name]",
-	                   config.numrows,
-	                   config.dirty ? "(modified)" : "");
+	int len =
+	  snprintf(status,
+	           sizeof(status),
+	           "%.20s - %d lines %s",
+	           config.filename.c_str() ? config.filename.c_str() : "[No Name]",
+	           config.numrows,
+	           config.dirty ? "(modified)" : "");
 
 	int rlen = snprintf(rstatus,
 	                    sizeof(rstatus),
@@ -936,33 +918,34 @@ Editor::RefreshScreen()
 void
 Editor::Save()
 {
-	// if (config.filename == nullptr) {
-	// 	config.filename = Prompt("Save as: %s (ESC to cancel)", nullptr);
-	// 	if (config.filename == nullptr) {
-	// 		SetStatusMessage("Save aborted");
-	// 		return;
-	// 	}
-	// 	SelectSyntaxHighlight();
-	// }
+	if (config.filename.empty()) {
+		config.filename = Prompt("Save as: %s (ESC to cancel)", nullptr);
+		if (config.filename.empty()) {
+			SetStatusMessage("Save aborted");
+			return;
+		}
+		SelectSyntaxHighlight();
+	}
 
-	// int   len;
-	// char* buf = RowsToString(&len);
+	int   len;
+	char* buf = RowsToString(&len);
 
-	// int fd = open(config.filename, O_RDWR | O_CREAT, 0644);
-	// if (fd != -1) {
-	// 	if (ftruncate(fd, len) != -1) {
-	// 		if (write(fd, buf, len) == len) {
-	// 			close(fd);
-	// 			free(buf);
-	// 			config.dirty = 0;
-	// 			SetStatusMessage("%d bytes written to disk", len);
-	// 			return;
-	// 		}
-	// 	}
-	// 	close(fd);
-	// }
-	// free(buf);
-	// SetStatusMessage("Can't save! I/O error: %s", strerror(errno));
+	std::ofstream saveFile(config.filename, std::ios_base::out);
+
+	if (saveFile.is_open()) {
+
+		if (saveFile << buf) {
+			saveFile.close();
+			free(buf);
+			config.dirty = 0;
+			SetStatusMessage("%d bytes written to disk", len);
+			return;
+		}
+		saveFile.close();
+	}
+
+	free(buf);
+	SetStatusMessage("Can't save! I/O error: %s", strerror(errno));
 }
 
 void

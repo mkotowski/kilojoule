@@ -34,7 +34,7 @@ struct editorConfig
 	int                  numrows;
 	erow*                row;
 	int                  dirty;
-	const char*          filename;
+	std::string          filename;
 	char                 statusmsg[80];
 	time_t               statusmsg_time;
 	struct editorSyntax* syntax;
