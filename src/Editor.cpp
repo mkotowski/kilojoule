@@ -615,7 +615,7 @@ Editor::SetStatusMessage(const char* fmt, ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	vsnprintf(config.statusmsg, sizeof(config.statusmsg), fmt, ap);
+	vsnprintf(config.statusmsg.data(), config.statusmsg.size(), fmt, ap);
 	va_end(ap);
 	config.statusmsg_time = time(nullptr);
 }
@@ -664,12 +664,12 @@ void
 Editor::DrawMessageBar(std::string& ab)
 {
 	ab.append(escapeSequences::eraseInLine);
-	int msglen = static_cast<int>(strlen(config.statusmsg));
+	int msglen = config.statusmsg.size();
 	if (msglen > config.screencols) {
 		msglen = config.screencols;
 	}
 	if (msglen && time(NULL) - config.statusmsg_time < 5) {
-		ab.append(config.statusmsg, msglen);
+		ab.append(config.statusmsg.data());
 	}
 }
 

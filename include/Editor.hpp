@@ -2,6 +2,7 @@
 
 #include <ctime> // time_t
 #include <memory>
+#include <array>
 
 class Terminal;
 
@@ -35,7 +36,7 @@ struct editorConfig
 	erow*                row;
 	int                  dirty;
 	std::string          filename;
-	char                 statusmsg[80];
+	std::array<char, 80> statusmsg;
 	time_t               statusmsg_time;
 	struct editorSyntax* syntax;
 };
