@@ -621,21 +621,9 @@ Editor::SetStatusMessage(const char* fmt, ...)
 }
 
 void
-abAppend(std::string& ab, const char* s, int len)
-{
-	ab.append(s, len);
-}
-
-void
-abFree(std::string& ab)
-{
-	ab.clear();
-}
-
-void
 Editor::DrawStatusBar(std::string& ab)
 {
-	abAppend(ab, "\x1b[7m", 4);
+	ab.append("\x1b[7m");
 
 	char status[80], rstatus[80];
 
@@ -657,31 +645,31 @@ Editor::DrawStatusBar(std::string& ab)
 	if (len > config.screencols) {
 		len = config.screencols;
 	}
-	abAppend(ab, status, len);
+	ab.append(status, len);
 
 	while (len < config.screencols) {
 		if (config.screencols - len == rlen) {
-			abAppend(ab, rstatus, rlen);
+			ab.append(rstatus, rlen);
 			break;
 		} else {
-			abAppend(ab, " ", 1);
+			ab.append(" ");
 			len++;
 		}
 	}
-	abAppend(ab, "\x1b[m", 3);
-	abAppend(ab, "\r\n", 2);
+	ab.append("\x1b[m");
+	ab.append("\r\n");
 }
 
 void
 Editor::DrawMessageBar(std::string& ab)
 {
-	abAppend(ab, "\x1b[K", 3);
+	ab.append("\x1b[K", 3);
 	int msglen = static_cast<int>(strlen(config.statusmsg));
 	if (msglen > config.screencols) {
 		msglen = config.screencols;
 	}
 	if (msglen && time(NULL) - config.statusmsg_time < 5) {
-		abAppend(ab, config.statusmsg, msglen);
+		ab.append(config.statusmsg, msglen);
 	}
 }
 
@@ -704,14 +692,14 @@ Editor::DrawRows(std::string& ab)
 				}
 				int padding = (config.screencols - welcomelen) / 2;
 				if (padding) {
-					abAppend(ab, "~", 1);
+					ab.append("~");
 					padding--;
 				}
 				while (padding--)
-					abAppend(ab, " ", 1);
-				abAppend(ab, welcome, welcomelen);
+					ab.append(" ");
+				ab.append(welcome, welcomelen);
 			} else {
-				abAppend(ab, "~", 1);
+				ab.append("~");
 			}
 		} else {
 			int len = config.row[filerow].rsize - config.coloff;
@@ -731,26 +719,26 @@ Editor::DrawRows(std::string& ab)
 			for (int j = 0; j < len; j++) {
 				if (hl[j] == HL_NORMAL) {
 					if (current_color != -1) {
-						abAppend(ab, "\x1b[39m", 5);
+						ab.append("\x1b[39m");
 						current_color = -1;
 					}
-					abAppend(ab, &c[j], 1);
+					ab.append(&c[j], 1);
 				} else {
 					int color = SyntaxToColor(hl[j]);
 					if (color != current_color) {
 						current_color = color;
 						char buf[16];
 						int  clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
-						abAppend(ab, buf, clen);
+						ab.append(buf, clen);
 					}
-					abAppend(ab, &c[j], 1);
+					ab.append(&c[j]);
 				}
 			}
-			abAppend(ab, "\x1b[39m", 5);
+			ab.append("\x1b[39m");
 		}
 
-		abAppend(ab, "\x1b[K", 3);
-		abAppend(ab, "\r\n", 2);
+		ab.append("\x1b[K");
+		ab.append("\r\n");
 	}
 }
 
@@ -824,8 +812,8 @@ Editor::RefreshScreen()
 
 	std::string ab{};
 
-	abAppend(ab, "\x1b[?25l", 6);
-	abAppend(ab, "\x1b[H", 3);
+	ab.append("\x1b[?25l");
+	ab.append("\x1b[H");
 
 	DrawRows(ab);
 	DrawStatusBar(ab);
@@ -837,12 +825,12 @@ Editor::RefreshScreen()
 	         "\x1b[%d;%dH",
 	         (config.cy - config.rowoff) + 1,
 	         (config.rx - config.coloff) + 1);
-	abAppend(ab, buf, static_cast<int>(strlen(buf)));
+	ab.append(buf);
 
-	abAppend(ab, "\x1b[?25h", 6);
+	ab.append("\x1b[?25h");
 
 	write(STDOUT_FILENO, ab.c_str(), ab.length());
-	abFree(ab);
+	ab.clear();
 }
 
 void
