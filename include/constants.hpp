@@ -38,6 +38,11 @@ namespace color {
 inline const char* reset = "\x1b[m";
 inline const char* reverse = "\x1b[7m";
 inline const char* defaultForeground = "\x1b[39m";
+[[nodiscard]] inline std::string
+getEscapeSequence(int color)
+{
+	return std::string("\x1b[" + std::to_string(color) + "m");
+}
 }
 namespace deviceStatusReport {
 inline const char* cursorPosition = "\x1b[6n";
