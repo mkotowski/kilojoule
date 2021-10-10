@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <array>
 
 namespace kilojoule {
 inline const char* version{ "0.1.0" };
@@ -48,3 +49,19 @@ namespace deviceStatusReport {
 inline const char* cursorPosition = "\x1b[6n";
 }
 }
+
+#if defined(__linux__)
+namespace defaultTermios {
+inline constexpr std::array<unsigned char, 32> c_cc = {
+	3, 28, 127, 21, 4, 0, 1, 0, 17, 19, 26, 0, 18, 15, 23, 22,
+	0, 0,  0,   0,  0, 0, 0, 0, 0,  0,  0,  0, 0,  0,  0,  0
+};
+inline constexpr int c_iflag = 1280;
+inline constexpr int c_oflag = 5;
+inline constexpr int c_cflag = 191;
+inline constexpr int c_lflag = 35387;
+inline constexpr int c_ispeed = 15;
+inline constexpr int c_ospeed = 15;
+inline constexpr int c_line = 0;
+}
+#endif

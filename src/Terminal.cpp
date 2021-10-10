@@ -201,39 +201,21 @@ Terminal::ForceCookedMode()
 #if defined(__linux__)
 		TerminalFlags tmp;
 
-		tmp.c_cc[0] = 3;
-		tmp.c_cc[1] = 28;
-		tmp.c_cc[2] = 127;
-		tmp.c_cc[3] = 21;
-		tmp.c_cc[4] = 4;
-		tmp.c_cc[5] = 0;
-		tmp.c_cc[6] = 1;
-		tmp.c_cc[7] = 0;
-		tmp.c_cc[8] = 17;
-		tmp.c_cc[9] = 19;
-		tmp.c_cc[10] = 26;
-		tmp.c_cc[11] = 0;
-		tmp.c_cc[12] = 18;
-		tmp.c_cc[13] = 15;
-		tmp.c_cc[14] = 23;
-		tmp.c_cc[15] = 22;
-
-		for (size_t i = 16; i < 32; i++) {
-			tmp.c_cc[i] = 0;
+		for (size_t i = 0; i < defaultTermios::c_ccSize; i++) {
+			tmp.c_cc[i] = defaultTermios::c_cc.at(i);
 		}
 
-		tmp.c_iflag = 1280;
-		tmp.c_oflag = 5;
-		tmp.c_cflag = 191;
-		tmp.c_lflag = 35387;
+		tmp.c_iflag = defaultTermios::c_iflag;
+		tmp.c_oflag = defaultTermios::c_oflag;
+		tmp.c_cflag = defaultTermios::c_cflag;
+		tmp.c_lflag = defaultTermios::c_lflag;
 #if not defined(__ANDROID__)
-		tmp.c_ispeed = 15;
-		tmp.c_ospeed = 15;
+		tmp.c_ispeed = defaultTermios::c_ispeed;
+		tmp.c_ospeed = defaultTermios::c_ospeed;
 #endif
-		tmp.c_line = 0;
+		tmp.c_line = defaultTermios::c_line;
 
 		tcsetattr(STDIN_FILENO, TCSAFLUSH, &tmp);
-#elif defined(_WIN32)
 #endif
 	}
 }
