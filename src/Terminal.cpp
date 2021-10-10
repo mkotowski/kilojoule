@@ -201,7 +201,7 @@ Terminal::ForceCookedMode()
 #if defined(__linux__)
 		TerminalFlags tmp;
 
-		for (size_t i = 0; i < defaultTermios::c_ccSize; i++) {
+		for (size_t i = 0; i < defaultTermios::c_cc.size(); i++) {
 			tmp.c_cc[i] = defaultTermios::c_cc.at(i);
 		}
 
