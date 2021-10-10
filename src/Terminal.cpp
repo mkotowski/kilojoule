@@ -125,8 +125,10 @@ Terminal::GetWindowSize()
 #if defined(_WIN32)
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
 	if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi) == 0) {
-		if (write(STDOUT_FILENO, escapeSequences::cursorMaxForwardAndDown, 12) !=
-		    12) {
+		if (write(STDOUT_FILENO,
+		          escapeSequences::cursorMaxForwardAndDown,
+		          sizeof(escapeSequences::cursorMaxForwardAndDown)) !=
+		    sizeof(escapeSequences::cursorMaxForwardAndDown)) {
 			return -1;
 		}
 		return GetCursorPosition();
@@ -137,16 +139,18 @@ Terminal::GetWindowSize()
 	struct winsize ws;
 
 	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == -1 || ws.ws_col == 0) {
-		if (write(STDOUT_FILENO, escapeSequences::cursorMaxForwardAndDown, 12) !=
-		    12) {
+		if (write(STDOUT_FILENO,
+		          escapeSequences::cursorMaxForwardAndDown,
+		          sizeof(escapeSequences::cursorMaxForwardAndDown)) !=
+		    sizeof(escapeSequences::cursorMaxForwardAndDown)) {
 			return -1;
 		}
 		return GetCursorPosition();
-	} else {
-		columns = ws.ws_col;
-		rows = ws.ws_row;
-		return 0;
 	}
+
+	columns = ws.ws_col;
+	rows = ws.ws_row;
+
 #endif
 	return 0;
 }
@@ -154,30 +158,32 @@ Terminal::GetWindowSize()
 int
 Terminal::GetCursorPosition()
 {
-	std::array<char, 32> buf;
-	unsigned int         i = 0;
+	std::string buf{};
+	char        tmp{};
 
 	if (write(STDOUT_FILENO,
 	          escapeSequences::deviceStatusReport::cursorPosition,
-	          4) != 4) {
+	          sizeof(escapeSequences::deviceStatusReport::cursorPosition)) !=
+	    sizeof(escapeSequences::deviceStatusReport::cursorPosition)) {
 		return -1;
 	}
 
-	while (i < sizeof(buf) - 1) {
-		if (read(STDIN_FILENO, &buf[i], 1) != 1) {
+	while (true) {
+		if (read(STDIN_FILENO, &tmp, 1) != 1) {
 			break;
 		}
-		if (buf[i] == 'R') {
+
+		buf.append(&tmp);
+
+		if (buf.back() == 'R') {
 			break;
 		}
-		i++;
 	}
-	buf[i] = '\0';
 
 	if (buf[0] != '\x1b' || buf[1] != '[') {
 		return -1;
 	}
-	if (sscanf(&buf[2], "%d;%d", &rows, &columns) != 2) {
+	if (sscanf(&buf.c_str()[2], "%d;%d", &rows, &columns) != 2) {
 		return -1;
 	}
 
@@ -194,6 +200,7 @@ Terminal::ForceCookedMode()
 
 #if defined(__linux__)
 		TerminalFlags tmp;
+
 		tmp.c_cc[0] = 3;
 		tmp.c_cc[1] = 28;
 		tmp.c_cc[2] = 127;
