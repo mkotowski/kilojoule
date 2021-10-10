@@ -43,8 +43,6 @@ struct editorConfig
 	struct editorSyntax* syntax;
 };
 
-// append buffer
-
 class Editor
 {
 private:
@@ -67,7 +65,7 @@ public:
 	static int  ReadKey();
 	void        Open(const char* filename);
 	void        InsertRow(int at, const char* s, size_t len);
-	void        UpdateRow(erow* row);
+	void        UpdateRow(erow* row) const;
 	void        ProcessKeypress();
 	void        DrawMessageBar(std::string& ab);
 	void        DrawStatusBar(std::string& ab) const;
@@ -90,8 +88,7 @@ public:
 	void        SelectSyntaxHighlight();
 	static int  SyntaxToColor(int hl);
 	void        FindCallback(const char* query, int key);
-
-	void UpdateSyntax(erow* row);
+	void        UpdateSyntax(erow* row) const;
 
 	enum editorHighlight
 	{

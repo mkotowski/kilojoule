@@ -19,13 +19,13 @@
 #define HL_HIGHLIGHT_NUMBERS (1 << 0)
 #define HL_HIGHLIGHT_STRINGS (1 << 1)
 
-const char* C_HL_extensions[] = { ".c", ".h", ".cpp", NULL };
+const char* C_HL_extensions[] = { ".c", ".h", ".cpp", nullptr };
 const char* C_HL_keywords[] = { "switch",    "if",       "while",   "for",
 	                              "break",     "continue", "return",  "else",
 	                              "struct",    "union",    "typedef", "static",
 	                              "enum",      "class",    "case",    "int|",
 	                              "long|",     "double|",  "float|",  "char|",
-	                              "unsigned|", "signed|",  "void|",   NULL };
+	                              "unsigned|", "signed|",  "void|",   nullptr };
 
 // highlight database
 struct editorSyntax HLDB[] = {
@@ -124,18 +124,19 @@ Editor::Init(std::shared_ptr<Terminal> term)
 }
 
 void
-Editor::UpdateSyntax(erow* row)
+Editor::UpdateSyntax(erow* row) const
 {
 	row->hl = (unsigned char*)realloc(row->hl, row->rsize);
 	memset(row->hl, HL_NORMAL, row->rsize);
 
-	if (config.syntax == NULL)
+	if (config.syntax == nullptr) {
 		return;
+	}
 
 	const char** keywords = config.syntax->keywords;
 
 	const char* scs = config.syntax->singleline_comment_start;
-	int         scs_len = scs ? static_cast<int>(strlen(scs)) : 0;
+	int         scs_len = scs != nullptr ? static_cast<int>(strlen(scs)) : 0;
 
 	int prev_sep = 1;
 	int in_string = 0;
@@ -146,33 +147,34 @@ Editor::UpdateSyntax(erow* row)
 		unsigned char prev_hl =
 		  (i > 0) ? row->hl[i - 1] : static_cast<int>(HL_NORMAL);
 
-		if (scs_len && !in_string) {
+		if (static_cast<bool>(scs_len) && !static_cast<bool>(in_string)) {
 			if (!strncmp(&row->render[i], scs, scs_len)) {
 				memset(&row->hl[i], HL_COMMENT, row->rsize - i);
 				break;
 			}
 		}
 
-		if (config.syntax->flags & HL_HIGHLIGHT_STRINGS) {
-			if (in_string) {
+		if (static_cast<bool>(config.syntax->flags & HL_HIGHLIGHT_STRINGS)) {
+			if (static_cast<bool>(in_string)) {
 				row->hl[i] = HL_STRING;
 				if (c == '\\' && i + 1 < row->rsize) {
 					row->hl[i + 1] = HL_STRING;
 					i += 2;
 					continue;
 				}
-				if (c == in_string)
+				if (c == in_string) {
 					in_string = 0;
+				}
 				i++;
 				prev_sep = 1;
 				continue;
-			} else {
-				if (c == '"' || c == '\'') {
-					in_string = c;
-					row->hl[i] = HL_STRING;
-					i++;
-					continue;
-				}
+			}
+
+			if (c == '"' || c == '\'') {
+				in_string = c;
+				row->hl[i] = HL_STRING;
+				i++;
+				continue;
 			}
 		}
 
@@ -186,13 +188,14 @@ Editor::UpdateSyntax(erow* row)
 			}
 		}
 
-		if (prev_sep) {
+		if (static_cast<bool>(prev_sep)) {
 			int j;
 			for (j = 0; keywords[j]; j++) {
 				int klen = static_cast<int>(strlen(keywords[j]));
 				int kw2 = keywords[j][klen - 1] == '|';
-				if (kw2)
+				if (static_cast<bool>(kw2)) {
 					klen--;
+				}
 
 				if (!strncmp(&row->render[i], keywords[j], klen) &&
 				    is_separator(row->render[i + klen])) {
@@ -201,7 +204,7 @@ Editor::UpdateSyntax(erow* row)
 					break;
 				}
 			}
-			if (keywords[j] != NULL) {
+			if (keywords[j] != nullptr) {
 				prev_sep = 0;
 				continue;
 			}
@@ -458,7 +461,7 @@ Editor::InsertRow(int at, const char* s, size_t len)
 }
 
 void
-Editor::UpdateRow(erow* row)
+Editor::UpdateRow(erow* row) const
 {
 	int tabs = 0;
 
@@ -686,11 +689,9 @@ Editor::DrawRows(std::string& ab) const
 		int filerow = y + config.rowoff;
 		if (filerow >= config.numrows) {
 			if (config.numrows == 0 && y == config.screenrows / 3) {
-				char welcome[80];
-				int  welcomelen = snprintf(welcome,
-                                  sizeof(welcome),
-                                  "KiloJoule editor -- version %s",
-                                  kilojoule::version);
+				std::string welcome{ "KiloJoule editor -- version " };
+				welcome += kilojoule::version;
+				int welcomelen = welcome.size();
 
 				if (welcomelen > config.screencols) {
 					welcomelen = config.screencols;
@@ -700,9 +701,10 @@ Editor::DrawRows(std::string& ab) const
 					ab.append("~");
 					padding--;
 				}
-				while (static_cast<bool>(padding--))
+				while (static_cast<bool>(padding--)) {
 					ab.append(" ");
-				ab.append(welcome, welcomelen);
+				}
+				ab.append(welcome.c_str(), welcomelen);
 			} else {
 				ab.append("~");
 			}
@@ -732,9 +734,8 @@ Editor::DrawRows(std::string& ab) const
 					int color = SyntaxToColor(hl[j]);
 					if (color != current_color) {
 						current_color = color;
-						char buf[16];
-						int  clen = snprintf(buf, sizeof(buf), "\x1b[%dm", color);
-						ab.append(buf, clen);
+						std::string buf = escapeSequences::color::getEscapeSequence(color);
+						ab.append(buf);
 					}
 					ab.append(&c[j], 1);
 				}
