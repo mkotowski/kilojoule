@@ -639,12 +639,14 @@ Editor::ProcessKeypress()
 void
 Editor::SetStatusMessage(const char* fmt, ...)
 {
-	// va_list ap;
-	// va_start(ap, fmt);
-	// vsnprintf(config.statusmsg.data(), config.statusmsg.size(), fmt, ap);
-	// va_end(ap);
-	config.statusmsg = fmt;
+	char*   tmp = new char[config.screencols];
+	va_list ap;
+	va_start(ap, fmt);
+	vsnprintf(tmp, config.screencols, fmt, ap);
+	va_end(ap);
+	config.statusmsg = tmp;
 	config.statusmsg_time = time(nullptr);
+	delete[] tmp;
 }
 
 void
