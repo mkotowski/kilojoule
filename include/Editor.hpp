@@ -10,10 +10,8 @@ class Terminal;
 
 typedef struct erow
 {
-	int            size;
-	int            rsize;
-	char*          chars;
-	char*          render;
+	std::string    chars;
+	std::string    render;
 	unsigned char* hl;
 } erow;
 
@@ -35,10 +33,10 @@ struct editorConfig
 	int                  screenrows;
 	int                  screencols;
 	int                  numrows;
-	erow*                row;
+	std::vector<erow>    row;
 	int                  dirty;
 	std::string          filename;
-	std::array<char, 80> statusmsg;
+	std::string          statusmsg;
 	time_t               statusmsg_time;
 	struct editorSyntax* syntax;
 };
@@ -64,7 +62,7 @@ public:
 	                   std::function<void(const char*, int)> callback);
 	static int  ReadKey();
 	void        Open(const char* filename);
-	void        InsertRow(int at, const char* s, size_t len);
+	void        InsertRow(int at, const char* s);
 	void        UpdateRow(erow* row) const;
 	void        ProcessKeypress();
 	void        DrawMessageBar(std::string& ab);
@@ -76,19 +74,20 @@ public:
 	static int  RowRxToCx(erow* row, int rx);
 	void        MoveCursor(int key);
 	void        DelRow(int at);
-	void        RowInsertChar(erow* row, int at, int c);
+	void        RowInsertChar(erow* row, int at, char c);
 	void        RowAppendString(erow* row, char* s, size_t len);
 	void        RowDelChar(erow* row, int at);
 	void        InsertChar(int c);
 	void        InsertNewline();
 	void        DelChar();
-	char*       RowsToString(int* buflen) const;
 	void        Save();
 	void        Find();
 	void        SelectSyntaxHighlight();
 	static int  SyntaxToColor(int hl);
 	void        FindCallback(const char* query, int key);
 	void        UpdateSyntax(erow* row) const;
+
+	[[nodiscard]] std::string RowsToString() const;
 
 	enum editorHighlight
 	{

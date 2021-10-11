@@ -69,23 +69,36 @@ void
 Editor::SelectSyntaxHighlight()
 {
 	config.syntax = nullptr;
-	if (config.filename.c_str() == nullptr) {
+
+	if (config.filename.empty()) {
 		return;
 	}
 
-	const char* ext = strrchr(config.filename.c_str(), '.');
+	std::string::size_type filePos = config.filename.rfind('.');
+
+	std::string extension{};
+	std::string fileName{};
+
+	if (filePos != std::string::npos) {
+		extension = config.filename.substr(filePos, std::string::npos);
+	} else {
+		filePos = 0;
+	}
+
+	fileName = config.filename.substr(0, filePos + 1);
 
 	for (unsigned int j = 0; j < HLDB_ENTRIES; j++) {
 		struct editorSyntax* s = &HLDB[j];
 		unsigned int         i = 0;
-		while (s->filematch[i]) {
+		while (s->filematch[i] != nullptr) {
 			bool is_ext = (s->filematch[i][0] == '.');
-			if ((is_ext && ext && !strcmp(ext, s->filematch[i])) ||
-			    (!is_ext && strstr(config.filename.c_str(), s->filematch[i]))) {
+			if ((is_ext && !extension.empty() &&
+			     !(extension != std::string(s->filematch[i]))) ||
+			    (!is_ext &&
+			     config.filename.find(s->filematch[i]) != std::string::npos)) {
 				config.syntax = s;
 
-				int filerow;
-				for (filerow = 0; filerow < config.numrows; filerow++) {
+				for (int filerow = 0; filerow < config.numrows; filerow++) {
 					UpdateSyntax(&config.row[filerow]);
 				}
 
@@ -107,10 +120,10 @@ Editor::Init(std::shared_ptr<Terminal> term)
 	config.rowoff = 0;
 	config.coloff = 0;
 	config.numrows = 0;
-	config.row = nullptr;
+	config.row = {};
 	config.dirty = 0;
 	config.filename.clear();
-	config.statusmsg[0] = '\0';
+	config.statusmsg = "";
 	config.statusmsg_time = 0;
 	config.syntax = nullptr;
 
@@ -126,8 +139,8 @@ Editor::Init(std::shared_ptr<Terminal> term)
 void
 Editor::UpdateSyntax(erow* row) const
 {
-	row->hl = (unsigned char*)realloc(row->hl, row->rsize);
-	memset(row->hl, HL_NORMAL, row->rsize);
+	row->hl = (unsigned char*)realloc(row->hl, row->render.size());
+	memset(row->hl, HL_NORMAL, row->render.size());
 
 	if (config.syntax == nullptr) {
 		return;
@@ -141,15 +154,15 @@ Editor::UpdateSyntax(erow* row) const
 	int prev_sep = 1;
 	int in_string = 0;
 
-	int i = 0;
-	while (i < row->rsize) {
+	size_t i = 0;
+	while (i < row->render.size()) {
 		char          c = row->render[i];
 		unsigned char prev_hl =
 		  (i > 0) ? row->hl[i - 1] : static_cast<int>(HL_NORMAL);
 
 		if (static_cast<bool>(scs_len) && !static_cast<bool>(in_string)) {
 			if (!strncmp(&row->render[i], scs, scs_len)) {
-				memset(&row->hl[i], HL_COMMENT, row->rsize - i);
+				memset(&row->hl[i], HL_COMMENT, row->render.size() - i);
 				break;
 			}
 		}
@@ -157,7 +170,7 @@ Editor::UpdateSyntax(erow* row) const
 		if (static_cast<bool>(config.syntax->flags & HL_HIGHLIGHT_STRINGS)) {
 			if (static_cast<bool>(in_string)) {
 				row->hl[i] = HL_STRING;
-				if (c == '\\' && i + 1 < row->rsize) {
+				if (c == '\\' && i + 1 < row->render.size()) {
 					row->hl[i + 1] = HL_STRING;
 					i += 2;
 					continue;
@@ -221,24 +234,24 @@ Editor::DelRow(int at)
 	if (at < 0 || at >= config.numrows)
 		return;
 	FreeRow(&config.row[at]);
-	memmove(&config.row[at],
-	        &config.row[at + 1],
-	        sizeof(erow) * (config.numrows - at - 1));
+	std::vector<erow>::iterator it = config.row.begin() + at;
+	config.row.erase(it);
+	// memmove(&config.row[at],
+	//         &config.row[at + 1],
+	//         sizeof(erow) * (config.numrows - at - 1));
 	config.numrows--;
 	config.dirty++;
 }
 
 void
-Editor::RowInsertChar(erow* row, int at, int c)
+Editor::RowInsertChar(erow* row, int at, char c)
 {
-	if (at < 0 || at > row->size) {
-		at = row->size;
+	if (at < 0 || at > static_cast<int>(row->chars.size())) {
+		at = row->chars.size();
 	}
 
-	row->chars = (char*)realloc(row->chars, row->size + 2);
-	memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
-	row->size++;
-	row->chars[at] = static_cast<char>(c);
+	row->chars.insert(static_cast<size_t>(at), &c);
+
 	UpdateRow(row);
 	config.dirty++;
 }
@@ -246,10 +259,7 @@ Editor::RowInsertChar(erow* row, int at, int c)
 void
 Editor::RowAppendString(erow* row, char* s, size_t len)
 {
-	row->chars = (char*)realloc(row->chars, row->size + len + 1);
-	memcpy(&row->chars[row->size], s, len);
-	row->size += static_cast<int>(len);
-	row->chars[row->size] = '\0';
+	row->chars.append(s, len);
 	UpdateRow(row);
 	config.dirty++;
 }
@@ -257,11 +267,10 @@ Editor::RowAppendString(erow* row, char* s, size_t len)
 void
 Editor::RowDelChar(erow* row, int at)
 {
-	if (at < 0 || at >= row->size) {
+	if (at < 0 || at >= static_cast<int>(row->chars.size())) {
 		return;
 	}
-	memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
-	row->size--;
+	row->chars.erase(at, 1);
 	UpdateRow(row);
 	config.dirty++;
 }
@@ -270,7 +279,7 @@ void
 Editor::InsertChar(int c)
 {
 	if (config.cy == config.numrows) {
-		InsertRow(config.numrows, "\0", 0);
+		InsertRow(config.numrows, "\0");
 	}
 	RowInsertChar(&config.row[config.cy], config.cx, c);
 	config.cx++;
@@ -280,13 +289,14 @@ void
 Editor::InsertNewline()
 {
 	if (config.cx == 0) {
-		InsertRow(config.cy, "", 0);
+		InsertRow(config.cy, "");
 	} else {
 		erow* row = &config.row[config.cy];
-		InsertRow(config.cy + 1, &row->chars[config.cx], row->size - config.cx);
+		InsertRow(config.cy + 1, &row->chars[config.cx]);
 		row = &config.row[config.cy];
-		row->size = config.cx;
-		row->chars[row->size] = '\0';
+		// row->chars.size() = config.cx;
+		row->chars.erase(config.cx, std::string::npos);
+		// row->chars[row->chars.size()] = '\0';
 		UpdateRow(row);
 	}
 	config.cy++;
@@ -308,30 +318,23 @@ Editor::DelChar()
 		RowDelChar(row, config.cx - 1);
 		config.cx--;
 	} else {
-		config.cx = config.row[config.cy - 1].size;
-		RowAppendString(&config.row[config.cy - 1], row->chars, row->size);
+		config.cx = config.row[config.cy - 1].chars.size();
+		RowAppendString(&config.row[config.cy - 1],
+		                const_cast<char*>(row->chars.c_str()),
+		                row->chars.size());
 		DelRow(config.cy);
 		config.cy--;
 	}
 }
 
-char*
-Editor::RowsToString(int* buflen) const
+std::string
+Editor::RowsToString() const
 {
-	int totlen = 0;
+	std::string buf{};
 
 	for (int j = 0; j < config.numrows; j++) {
-		totlen += config.row[j].size + 1;
-	}
-	*buflen = totlen;
-
-	char* buf = (char*)malloc(totlen);
-	char* p = buf;
-	for (int j = 0; j < config.numrows; j++) {
-		memcpy(p, config.row[j].chars, config.row[j].size);
-		p += config.row[j].size;
-		*p = '\n';
-		p++;
+		buf.append(config.row[j].chars);
+		buf.append("\n");
 	}
 
 	return buf;
@@ -425,7 +428,7 @@ Editor::Open(const char* filename)
 
 	if (file.is_open()) {
 		while (getline(file, line)) {
-			InsertRow(config.numrows, line.c_str(), line.size());
+			InsertRow(config.numrows, line.c_str());
 		}
 		file.close();
 	} else {
@@ -436,24 +439,33 @@ Editor::Open(const char* filename)
 }
 
 void
-Editor::InsertRow(int at, const char* s, size_t len)
+Editor::InsertRow(int at, const char* s)
 {
 	if (at < 0 || at > config.numrows) {
 		return;
 	}
 
-	config.row = (erow*)realloc(config.row, sizeof(erow) * (config.numrows + 1));
-	memmove(
-	  &config.row[at + 1], &config.row[at], sizeof(erow) * (config.numrows - at));
+	erow tmp{};
+	tmp.hl = nullptr;
+	tmp.chars = s;
+	tmp.render = "";
 
-	config.row[at].size = static_cast<int>(len);
-	config.row[at].chars = (char*)malloc(len + 1);
-	memcpy(config.row[at].chars, s, len);
-	config.row[at].chars[len] = '\0';
+	std::vector<erow>::iterator it = config.row.begin() + at;
+	config.row.insert(it, tmp);
 
-	config.row[at].rsize = 0;
-	config.row[at].render = nullptr;
-	config.row[at].hl = nullptr;
+	// config.row = (erow*)realloc(config.row, sizeof(erow) * (config.numrows
+	// + 1)); memmove(
+	//   &config.row[at + 1], &config.row[at], sizeof(erow) * (config.numrows
+	//   - at));
+
+	// config.row[at].size = static_cast<int>(len);
+	// config.row[at].chars = (char*)malloc(len + 1);
+	// memcpy(config.row[at].chars, s, len);
+	// config.row[at].chars[len] = '\0';
+
+	// config.row[at].rsize = 0;
+	// config.row[at].render = nullptr;
+	// config.row[at].hl = nullptr;
 	UpdateRow(&config.row[at]);
 
 	config.numrows++;
@@ -463,31 +475,36 @@ Editor::InsertRow(int at, const char* s, size_t len)
 void
 Editor::UpdateRow(erow* row) const
 {
-	int tabs = 0;
+	// int tabs = 0;
 
-	for (int j = 0; j < row->size; j++) {
-		if (row->chars[j] == '\t') {
-			tabs++;
-		}
-	}
+	// for (int j = 0; j < row->chars.size(); j++) {
+	// 	if (row->chars[j] == '\t') {
+	// 		tabs++;
+	// 	}
+	// }
 
-	free(row->render);
-	row->render =
-	  (char*)malloc(row->size + tabs * (kilojoule::defaults::tabStop - 1) + 1);
+	// free(row->render);
+	// row->render = (char*)malloc(row->chars.size() +
+	//                             tabs * (kilojoule::defaults::tabStop - 1) + 1);
+
+	row->render = "";
 
 	int idx = 0;
-	for (int j = 0; j < row->size; j++) {
+	for (int j = 0; j < static_cast<int>(row->chars.size()); j++) {
 		if (row->chars[j] == '\t') {
-			row->render[idx++] = ' ';
+			row->render += ' ';
+			idx++;
 			while (idx % kilojoule::defaults::tabStop != 0) {
-				row->render[idx++] = ' ';
+				row->render += ' ';
+				idx++;
 			}
 		} else {
-			row->render[idx++] = row->chars[j];
+			row->render += row->chars[j];
+			idx++;
 		}
 	}
-	row->render[idx] = '\0';
-	row->rsize = idx;
+	// row->render[idx] = '\0';
+	// row->render.size() = idx;
 
 	UpdateSyntax(row);
 }
@@ -505,16 +522,17 @@ Editor::MoveCursor(int key)
 			// Move up when moving left at the start of a line
 			else if (config.cy > 0) {
 				config.cy--;
-				config.cx = config.row[config.cy].size;
+				config.cx = config.row[config.cy].chars.size();
 			}
 			break;
 		case ARROW_RIGHT:
 			// Limit scrolling to the right
-			if (row != nullptr && config.cx < row->size) {
+			if (row != nullptr && config.cx < static_cast<int>(row->chars.size())) {
 				config.cx++;
 			}
 			// Move down when moving right at the end of a line
-			else if (row != nullptr && config.cx == row->size) {
+			else if (row != nullptr &&
+			         config.cx == static_cast<int>(row->chars.size())) {
 				config.cy++;
 				config.cx = 0;
 			}
@@ -533,7 +551,7 @@ Editor::MoveCursor(int key)
 
 	// Snap cursor to end of line
 	row = (config.cy >= config.numrows) ? nullptr : &config.row[config.cy];
-	int rowlen = row != nullptr ? row->size : 0;
+	int rowlen = row != nullptr ? row->chars.size() : 0;
 	if (config.cx > rowlen) {
 		config.cx = rowlen;
 	}
@@ -571,7 +589,7 @@ Editor::ProcessKeypress()
 			break;
 		case END_KEY:
 			if (config.cy < config.numrows) {
-				config.cx = config.row[config.cy].size;
+				config.cx = config.row[config.cy].chars.size();
 			}
 			break;
 		case CTRL_KEY('f'):
@@ -621,10 +639,11 @@ Editor::ProcessKeypress()
 void
 Editor::SetStatusMessage(const char* fmt, ...)
 {
-	va_list ap;
-	va_start(ap, fmt);
-	vsnprintf(config.statusmsg.data(), config.statusmsg.size(), fmt, ap);
-	va_end(ap);
+	// va_list ap;
+	// va_start(ap, fmt);
+	// vsnprintf(config.statusmsg.data(), config.statusmsg.size(), fmt, ap);
+	// va_end(ap);
+	config.statusmsg = fmt;
 	config.statusmsg_time = time(nullptr);
 }
 
@@ -677,7 +696,7 @@ Editor::DrawMessageBar(std::string& ab)
 		msglen = config.screencols;
 	}
 	if (static_cast<bool>(msglen) && time(nullptr) - config.statusmsg_time < 5) {
-		ab.append(config.statusmsg.data());
+		ab.append(config.statusmsg);
 	}
 }
 
@@ -709,7 +728,7 @@ Editor::DrawRows(std::string& ab) const
 				ab.append("~");
 			}
 		} else {
-			int len = config.row[filerow].rsize - config.coloff;
+			int len = config.row[filerow].render.size() - config.coloff;
 
 			if (len < 0) {
 				len = 0;
@@ -719,7 +738,7 @@ Editor::DrawRows(std::string& ab) const
 				len = config.screencols;
 			}
 
-			char*          c = &config.row[filerow].render[config.coloff];
+			const char*    c = &config.row[filerow].render[config.coloff];
 			unsigned char* hl = &config.row[filerow].hl[config.coloff];
 			int            current_color = -1;
 
@@ -751,8 +770,8 @@ Editor::DrawRows(std::string& ab) const
 void
 Editor::FreeRow(erow* row)
 {
-	free(row->render);
-	free(row->chars);
+	// free(row->render);
+	// free(row->chars);
 	free(row->hl);
 }
 
@@ -774,9 +793,9 @@ Editor::RowCxToRx(erow* row, int cx)
 int
 Editor::RowRxToCx(erow* row, int rx)
 {
-	int cur_rx = 0;
-	int cx;
-	for (cx = 0; cx < row->size; cx++) {
+	int    cur_rx = 0;
+	size_t cx;
+	for (cx = 0; cx < row->chars.size(); cx++) {
 		if (row->chars[cx] == '\t') {
 			cur_rx += (kilojoule::defaults::tabStop - 1) -
 			          (cur_rx % kilojoule::defaults::tabStop);
@@ -787,7 +806,7 @@ Editor::RowRxToCx(erow* row, int rx)
 			return cx;
 		}
 	}
-	return cx;
+	return static_cast<int>(cx);
 }
 
 void
@@ -849,24 +868,20 @@ Editor::Save()
 		SelectSyntaxHighlight();
 	}
 
-	int   len;
-	char* buf = RowsToString(&len);
+	std::string buf = RowsToString();
 
 	std::ofstream saveFile(config.filename, std::ios_base::out);
 
 	if (saveFile.is_open()) {
-
 		if (saveFile << buf) {
 			saveFile.close();
-			free(buf);
 			config.dirty = 0;
-			SetStatusMessage("%d bytes written to disk", len);
+			SetStatusMessage("%d bytes written to disk", buf.size());
 			return;
 		}
 		saveFile.close();
 	}
 
-	free(buf);
 	SetStatusMessage("Can't save! I/O error: %s", strerror(errno));
 }
 
@@ -880,8 +895,9 @@ Editor::FindCallback(const char* query, int key)
 	static char* saved_hl = nullptr;
 
 	if (saved_hl != nullptr) {
-		memcpy(
-		  config.row[saved_hl_line].hl, saved_hl, config.row[saved_hl_line].rsize);
+		memcpy(config.row[saved_hl_line].hl,
+		       saved_hl,
+		       config.row[saved_hl_line].render.size());
 		free(saved_hl);
 		saved_hl = nullptr;
 	}
@@ -913,18 +929,18 @@ Editor::FindCallback(const char* query, int key)
 			current = 0;
 		}
 
-		erow* row = &config.row[current];
-		char* match = strstr(row->render, query);
+		erow*       row = &config.row[current];
+		const char* match = strstr(row->render.c_str(), query);
 		if (match != nullptr) {
 			last_match = current;
 			config.cy = current;
-			config.cx = RowRxToCx(row, match - row->render);
+			config.cx = RowRxToCx(row, match - row->render.c_str());
 			config.rowoff = config.numrows;
 
 			saved_hl_line = current;
-			saved_hl = (char*)malloc(row->rsize);
-			memcpy(saved_hl, row->hl, row->rsize);
-			memset(&row->hl[match - row->render], HL_MATCH, strlen(query));
+			saved_hl = (char*)malloc(row->render.size());
+			memcpy(saved_hl, row->hl, row->render.size());
+			memset(&row->hl[match - row->render.c_str()], HL_MATCH, strlen(query));
 			break;
 		}
 	}
