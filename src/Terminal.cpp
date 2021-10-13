@@ -183,7 +183,7 @@ Terminal::GetCursorPosition()
 	if (buf[0] != '\x1b' || buf[1] != '[') {
 		return -1;
 	}
-	if (sscanf(&buf.c_str()[2], "%d;%d", &rows, &columns) != 2) {
+	if (sscanf(&buf.c_str()[2], "%u;%u", &rows, &columns) != 2) {
 		return -1;
 	}
 
@@ -218,4 +218,106 @@ Terminal::ForceCookedMode()
 		tcsetattr(STDIN_FILENO, TCSAFLUSH, &tmp);
 #endif
 	}
+}
+
+std::string
+Terminal::SetCursorPositionEscapeSequence(unsigned int row, unsigned int column)
+{
+	return std::string("\x1b[" + std::to_string(row) + ";" +
+	                   std::to_string(column) + "H");
+}
+
+void
+Terminal::Write(const std::string& content)
+{
+	write(STDOUT_FILENO, content.c_str(), content.length());
+}
+
+void
+Terminal::Write(const char* content, size_t length)
+{
+	write(STDOUT_FILENO, content, length);
+}
+
+void
+Terminal::Write(const char* content)
+{
+	write(STDOUT_FILENO, content, std::char_traits<char>::length(content));
+}
+
+int
+Terminal::Read()
+{
+	int  nread;
+	char c;
+
+	while ((nread = read(STDIN_FILENO, &c, 1)) != 1) {
+		// in Cygwin, when read() times out it returns -1 with an errno
+		// of EAGAIN, instead of just returning 0
+		if (nread == -1 && errno != EAGAIN) {
+			// die("read");
+		}
+	}
+
+	if (c == '\x1b') {
+		std::array<char, 3> seq;
+
+		if (read(STDIN_FILENO, &seq[0], 1) != 1) {
+			return '\x1b';
+		}
+
+		if (read(STDIN_FILENO, &seq[1], 1) != 1) {
+			return '\x1b';
+		}
+
+		if (seq[0] == '[') {
+			if (seq[1] >= '0' && seq[1] <= '9') {
+				if (read(STDIN_FILENO, &seq[2], 1) != 1) {
+					return '\x1b';
+				}
+				if (seq[2] == '~') {
+					switch (seq[1]) {
+						case '1':
+							return Key::Home;
+						case '3':
+							return Key::Del;
+						case '4':
+							return Key::End;
+						case '5':
+							return Key::PageUp;
+						case '6':
+							return Key::PageDown;
+						case '7':
+							return Key::Home;
+						case '8':
+							return Key::End;
+					}
+				}
+			} else {
+				switch (seq[1]) {
+					case 'A':
+						return Key::ArrowUp;
+					case 'B':
+						return Key::ArrowDown;
+					case 'C':
+						return Key::ArrowRight;
+					case 'D':
+						return Key::ArrowLeft;
+					case 'H':
+						return Key::Home;
+					case 'F':
+						return Key::End;
+				}
+			}
+		} else if (seq[0] == 'O') {
+			switch (seq[1]) {
+				case 'H':
+					return Key::Home;
+				case 'F':
+					return Key::End;
+			}
+		}
+		return '\x1b';
+	}
+	return static_cast<int>(c);
 }

@@ -10,9 +10,9 @@ class Terminal;
 
 typedef struct erow
 {
-	std::string    chars;
-	std::string    render;
-	unsigned char* hl;
+	std::string chars;
+	std::string render;
+	std::string hl;
 } erow;
 
 struct editorSyntax
@@ -24,93 +24,82 @@ struct editorSyntax
 	int          flags;
 };
 
-struct editorConfig
-{
-	int                  cx, cy;
-	int                  rx;
-	int                  rowoff;
-	int                  coloff;
-	int                  screenrows;
-	int                  screencols;
-	int                  numrows;
-	std::vector<erow>    row;
-	int                  dirty;
-	std::string          filename;
-	std::string          statusmsg;
-	time_t               statusmsg_time;
-	struct editorSyntax* syntax;
-};
-
 class Editor
 {
 private:
-	editorConfig config;
+	// size_t cursorColumn{ 0 }; // the column position - x
+	size_t cursorRow{ 0 }; // the row position - y
+
+	size_t cursorRenderColumn{ 0 }; // rx
+
+	size_t columnOffset{ 0 };
+	size_t rowOffset{ 0 };
+
+	bool dirtyFlag{ false };
+	int  dirtyLevel{ 0 };
+
+	std::vector<erow> rows{};
+
+	std::string filename{};
+
+	size_t screenRows{ 0 };
+	size_t screenCols{ 0 };
+
+	std::string statusmsg{};
+	time_t      statusmsg_time{};
+
+	struct editorSyntax* syntax;
 
 public:
-	Editor(/* args */) = default;
+	Editor() = default;
 	~Editor() = default;
 
 	std::shared_ptr<Terminal> terminal = nullptr;
 
-	bool shouldClose = false;
+	bool shouldClose{ false };
 
 	int Init(std::shared_ptr<Terminal> term);
 
-	void        SetStatusMessage(const char* fmt, ...);
-	void        RefreshScreen();
-	std::string Prompt(const char*                           prompt,
-	                   std::function<void(const char*, int)> callback);
-	static int  ReadKey();
-	void        Open(const char* filename);
-	void        InsertRow(int at, const char* s);
-	void        UpdateRow(erow* row) const;
-	void        ProcessKeypress();
-	void        DrawMessageBar(std::string& ab);
-	void        DrawStatusBar(std::string& ab) const;
-	void        DrawRows(std::string& ab) const;
-	static void FreeRow(erow* row);
-	void        Scroll();
-	static int  RowCxToRx(erow* row, int cx);
-	static int  RowRxToCx(erow* row, int rx);
-	void        MoveCursor(int key);
-	void        DelRow(int at);
-	void        RowInsertChar(erow* row, int at, char c);
-	void        RowAppendString(erow* row, char* s, size_t len);
-	void        RowDelChar(erow* row, int at);
-	void        InsertChar(int c);
-	void        InsertNewline();
-	void        DelChar();
-	void        Save();
-	void        Find();
-	void        SelectSyntaxHighlight();
-	static int  SyntaxToColor(int hl);
-	void        FindCallback(const char* query, int key);
-	void        UpdateSyntax(erow* row) const;
+	// void        SetStatusMessage(const char* fmt, ...);
+	void RefreshScreen();
+	// std::string Prompt(const char*                           prompt,
+	//                    std::function<void(const char*, int)> callback);
+	// static int  ReadKey();
+	// void        Open(const char* filename);
+	// void        InsertRow(size_t at, const char* s);
+	// void        UpdateRow(erow* row) const;
+	void ProcessKeypress();
+	// void        DrawMessageBar(std::string& ab);
+	// void        DrawStatusBar(std::string& ab) const;
+	void DrawRows(std::string& ab) const;
+	// void        Scroll();
+	// static int  RowCxToRx(erow* row, size_t cx);
+	// static int  RowRxToCx(erow* row, int rx);
+	// void        MoveCursor(int key);
+	// void        DelRow(size_t at);
+	// void        RowInsertChar(erow* row, size_t at, char c);
+	// void        RowAppendString(erow* row, char* s, size_t len);
+	// void        RowDelChar(erow* row, size_t at);
+	// void        InsertChar(int c);
+	// void        InsertNewline();
+	// void        DelChar();
+	// void        Save();
+	// void        Find();
+	// void        SelectSyntaxHighlight();
+	// static int  SyntaxToColor(int hl);
+	// void        FindCallback(const char* query, int key);
+	// void        UpdateSyntax(erow* row) const;
 
-	[[nodiscard]] std::string RowsToString() const;
+	// [[nodiscard]] std::string RowsToString() const;
 
-	enum editorHighlight
-	{
-		HL_NORMAL = 0,
-		HL_COMMENT,
-		HL_KEYWORD1,
-		HL_KEYWORD2,
-		HL_STRING,
-		HL_NUMBER,
-		HL_MATCH
-	};
-
-	enum editorKey
-	{
-		BACKSPACE = 127,
-		ARROW_LEFT = 1000,
-		ARROW_RIGHT,
-		ARROW_UP,
-		ARROW_DOWN,
-		DEL_KEY,
-		HOME_KEY,
-		END_KEY,
-		PAGE_UP,
-		PAGE_DOWN
-	};
+	// enum editorHighlight
+	// {
+	// 	HL_NORMAL = 0,
+	// 	HL_COMMENT,
+	// 	HL_KEYWORD1,
+	// 	HL_KEYWORD2,
+	// 	HL_STRING,
+	// 	HL_NUMBER,
+	// 	HL_MATCH
+	// };
 };

@@ -7,7 +7,7 @@
 #include "Editor.hpp"
 
 int
-main(int argc, char* argv[])
+main() // int argc, char* argv[])
 {
 	Terminal terminal{};
 	Editor   editor{};
@@ -20,12 +20,12 @@ main(int argc, char* argv[])
 
 	editor.Init(std::make_shared<Terminal>(terminal));
 
-	if (argc >= 2) {
-		editor.Open(argv[1]);
-	}
+	// if (argc >= 2) {
+	// 	editor.Open(argv[1]);
+	// }
 
-	editor.SetStatusMessage(
-	  "HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
+	// editor.SetStatusMessage(
+	//   "HELP: Ctrl-S = save | Ctrl-Q = quit | Ctrl-F = find");
 
 	while (!editor.shouldClose) {
 		editor.RefreshScreen();

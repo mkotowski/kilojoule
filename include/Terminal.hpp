@@ -40,14 +40,28 @@ enum class TerminalMode
 	Cooked,
 };
 
+enum Key : int
+{
+	Backspace = 127,
+	ArrowLeft = 1000,
+	ArrowRight,
+	ArrowUp,
+	ArrowDown,
+	Del,
+	Home,
+	End,
+	PageUp,
+	PageDown
+};
+
 class Terminal
 {
 private:
 	TerminalFlags initFlags{};
 	TerminalFlags currentFlags{};
 
-	int rows{ 0 };
-	int columns{ 0 };
+	unsigned int rows{ 0 };
+	unsigned int columns{ 0 };
 
 	TerminalMode currentMode = TerminalMode::Cooked;
 
@@ -60,9 +74,19 @@ public:
 	static bool isCookedModeRestoredProperly;
 	static void ForceCookedMode();
 
+	static std::string SetCursorPositionEscapeSequence(unsigned int row,
+	                                                   unsigned int column);
+
 	int GetWindowSize();
 	int GetCursorPosition();
+	// void SetCursorPosition(unsigned int row, unsisgned int column);
 
 	[[nodiscard]] int GetRows() const { return rows; }
 	[[nodiscard]] int GetColumns() const { return columns; }
+
+	static void Write(const std::string& content);
+	static void Write(const char* content, size_t length);
+	static void Write(const char* content);
+
+	static int Read();
 };
