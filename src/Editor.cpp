@@ -192,7 +192,8 @@ Editor::UpdateSyntax(erow* row) const
 		}
 
 		if (config.syntax->flags & HL_HIGHLIGHT_NUMBERS) {
-			if ((isdigit(c) && (prev_sep || prev_hl == HL_NUMBER)) ||
+			if ((static_cast<bool>(isdigit(c)) &&
+			     (static_cast<bool>(prev_sep) || prev_hl == HL_NUMBER)) ||
 			    (c == '.' && prev_hl == HL_NUMBER)) {
 				row->hl[i] = HL_NUMBER;
 				i++;
@@ -210,9 +211,11 @@ Editor::UpdateSyntax(erow* row) const
 					klen--;
 				}
 
-				if (!strncmp(&row->render[i], keywords[j], klen) &&
-				    is_separator(row->render[i + klen])) {
-					memset(&row->hl[i], kw2 ? HL_KEYWORD2 : HL_KEYWORD1, klen);
+				if (!static_cast<bool>(strncmp(&row->render[i], keywords[j], klen)) &&
+				    static_cast<bool>(is_separator(row->render[i + klen]))) {
+					memset(&row->hl[i],
+					       static_cast<bool>(kw2) ? HL_KEYWORD2 : HL_KEYWORD1,
+					       klen);
 					i += klen;
 					break;
 				}
@@ -236,9 +239,6 @@ Editor::DelRow(int at)
 	FreeRow(&config.row[at]);
 	std::vector<erow>::iterator it = config.row.begin() + at;
 	config.row.erase(it);
-	// memmove(&config.row[at],
-	//         &config.row[at + 1],
-	//         sizeof(erow) * (config.numrows - at - 1));
 	config.numrows--;
 	config.dirty++;
 }
@@ -294,9 +294,7 @@ Editor::InsertNewline()
 		erow* row = &config.row[config.cy];
 		InsertRow(config.cy + 1, &row->chars[config.cx]);
 		row = &config.row[config.cy];
-		// row->chars.size() = config.cx;
 		row->chars.erase(config.cx, std::string::npos);
-		// row->chars[row->chars.size()] = '\0';
 		UpdateRow(row);
 	}
 	config.cy++;
@@ -450,22 +448,9 @@ Editor::InsertRow(int at, const char* s)
 	tmp.chars = s;
 	tmp.render = "";
 
-	std::vector<erow>::iterator it = config.row.begin() + at;
+	auto it = config.row.begin() + at;
 	config.row.insert(it, tmp);
 
-	// config.row = (erow*)realloc(config.row, sizeof(erow) * (config.numrows
-	// + 1)); memmove(
-	//   &config.row[at + 1], &config.row[at], sizeof(erow) * (config.numrows
-	//   - at));
-
-	// config.row[at].size = static_cast<int>(len);
-	// config.row[at].chars = (char*)malloc(len + 1);
-	// memcpy(config.row[at].chars, s, len);
-	// config.row[at].chars[len] = '\0';
-
-	// config.row[at].rsize = 0;
-	// config.row[at].render = nullptr;
-	// config.row[at].hl = nullptr;
 	UpdateRow(&config.row[at]);
 
 	config.numrows++;
@@ -475,18 +460,6 @@ Editor::InsertRow(int at, const char* s)
 void
 Editor::UpdateRow(erow* row) const
 {
-	// int tabs = 0;
-
-	// for (int j = 0; j < row->chars.size(); j++) {
-	// 	if (row->chars[j] == '\t') {
-	// 		tabs++;
-	// 	}
-	// }
-
-	// free(row->render);
-	// row->render = (char*)malloc(row->chars.size() +
-	//                             tabs * (kilojoule::defaults::tabStop - 1) + 1);
-
 	row->render = "";
 
 	int idx = 0;
@@ -503,8 +476,6 @@ Editor::UpdateRow(erow* row) const
 			idx++;
 		}
 	}
-	// row->render[idx] = '\0';
-	// row->render.size() = idx;
 
 	UpdateSyntax(row);
 }
@@ -772,8 +743,6 @@ Editor::DrawRows(std::string& ab) const
 void
 Editor::FreeRow(erow* row)
 {
-	// free(row->render);
-	// free(row->chars);
 	free(row->hl);
 }
 
