@@ -1,12 +1,15 @@
 #include <array>
-#include <cstdio> // sscanf
+#include <cstdio>  // sscanf
+#include <cerrno>  // for EAGAIN, errno
+#include <cstdlib> // for atexit
 
 #if defined(__linux__) || defined(__ANDROID__)
-#include <unistd.h>
-#include <sys/ioctl.h>
+#include <unistd.h>    // for read, write, STDIN_FILENO, ...
+#include <sys/ioctl.h> // for winsize, ioctl, TIOCGWINSZ
 #endif
 
 #include "Terminal.hpp"
+#include "constants.hpp"
 
 Terminal::Terminal()
 {

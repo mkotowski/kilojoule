@@ -8,12 +8,15 @@
 
 class Terminal;
 
-typedef struct erow
+class erow
 {
-	std::string chars;
-	std::string render;
-	std::string hl;
-} erow;
+public:
+	std::string chars{};
+	std::string render{};
+	std::string hl{};
+	erow() = default;
+	~erow() = default;
+};
 
 struct editorSyntax
 {
@@ -27,8 +30,8 @@ struct editorSyntax
 class Editor
 {
 private:
-	// size_t cursorColumn{ 0 }; // the column position - x
-	size_t cursorRow{ 0 }; // the row position - y
+	size_t cursorColumn{ 0 }; // the column position - x
+	size_t cursorRow{ 0 };    // the row position - y
 
 	size_t cursorRenderColumn{ 0 }; // rx
 
@@ -60,30 +63,42 @@ public:
 
 	int Init(std::shared_ptr<Terminal> term);
 
-	// void        SetStatusMessage(const char* fmt, ...);
 	void RefreshScreen();
+
+	// Filesystem operations
+	void Open(const char* filename);
+	// void        Save();
+
+	// Text buffer manipulation
+	void UpdateRow(size_t at);
+	void InsertRow(size_t at, const char* s);
+
+	void InsertNewline();
+
+	// User input
+	void ProcessKeypress();
+
+	// Interface
+	void DrawRows(std::string& ab) const;
+	void DrawStatusBar(std::string& ab) const;
+	void DrawMessageBar(std::string& ab);
+
+	void SetStatusMessage(const char* fmt, ...);
 	// std::string Prompt(const char*                           prompt,
 	//                    std::function<void(const char*, int)> callback);
-	// static int  ReadKey();
-	// void        Open(const char* filename);
-	// void        InsertRow(size_t at, const char* s);
-	// void        UpdateRow(erow* row) const;
-	void ProcessKeypress();
-	// void        DrawMessageBar(std::string& ab);
-	// void        DrawStatusBar(std::string& ab) const;
-	void DrawRows(std::string& ab) const;
-	// void        Scroll();
+
+	// Cursor and view offset
+	void Scroll();
+	void MoveCursor(int key);
+
 	// static int  RowCxToRx(erow* row, size_t cx);
 	// static int  RowRxToCx(erow* row, int rx);
-	// void        MoveCursor(int key);
 	// void        DelRow(size_t at);
 	// void        RowInsertChar(erow* row, size_t at, char c);
 	// void        RowAppendString(erow* row, char* s, size_t len);
 	// void        RowDelChar(erow* row, size_t at);
 	// void        InsertChar(int c);
-	// void        InsertNewline();
 	// void        DelChar();
-	// void        Save();
 	// void        Find();
 	// void        SelectSyntaxHighlight();
 	// static int  SyntaxToColor(int hl);

@@ -1,7 +1,10 @@
 #pragma once
 
+#include <cstddef> // for size_t
+#include <string>  // for string
+
 #if defined(__linux__)
-#include <termios.h>
+#include <termios.h> // for tcsetattr, cc_t, tcgetattr, ...
 #endif
 
 #ifdef _WIN32
@@ -30,8 +33,6 @@ using TerminalFlags = DWORD;
 #if defined(__linux__)
 using TerminalFlags = termios;
 #endif
-
-#include "constants.hpp"
 
 enum class TerminalMode
 {
